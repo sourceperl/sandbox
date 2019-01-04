@@ -111,3 +111,4 @@ lab/
 
 # private info
 .private_config
+private_*.py

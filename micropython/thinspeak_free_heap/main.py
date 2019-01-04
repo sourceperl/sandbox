@@ -10,13 +10,9 @@ import os
 import gc
 
 # some const
-WIFI_SSID = "WIFI_XXXXX"
-WIFI_PWD = "XXXXXXX"
+from private_wifi import WIFI_SSID, WIFI_PWD
+from private_thingspeak import TS_USER_ID, TS_MQTT_API_KEY, TS_CHANNEL_ID, TS_CHANNEL_W_API_KEY
 TS_SRV = "mqtt.thingspeak.com"
-TS_USER_ID = "XXXXXXXXXXXXXXXX"
-TS_MQTT_API_KEY = "XXXXXXXXXXXXXXXX"
-TS_CHANNEL_ID = "42"
-TS_CHANNEL_W_API_KEY = "XXXXXXXXXXXXXXXX"
 TS_PUBLISH_PERIOD = 30
 
 # turn off access point interface (default is on)
