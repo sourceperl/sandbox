@@ -1,0 +1,35 @@
+- flash micropython on NodeMCU ESP8266:
+
+    # erase ESP8266 flash
+    esptool.py --port /dev/ttyUSB0 erase_flash
+
+    # upload micropython v1.9.4 (firmware available at http://micropython.org/download)
+    wget http://micropython.org/resources/firmware/esp8266-20180511-v1.9.4.bin
+    esptool.py --port /dev/ttyUSB0 --baud 460800 write_flash --flash_size=detect -fm dio 0 esp8266-20180511-v1.9.4.bin
+
+- tool to manage files (put, get, rm...) on micropython flash storage :
+
+    # add ampy tool:
+    sudo pip3 install adafruit-ampy
+
+- use miniterm to dial with micropython REPL
+
+    # start miniterm (exit with CTRL-])
+    miniterm.py --raw /dev/ttyUSB0 115200
+
+- REPL control commands:
+
+  CTRL-A  -- on a blank line, enter raw REPL mode
+  CTRL-B  -- on a blank line, enter normal REPL mode
+  CTRL-C  -- interrupt a running program
+  CTRL-D  -- on a blank line, do a soft reset of the board
+  CTRL-E  -- on a blank line, enter paste mode
+
+- activate WebREPL websocket on the board (web and cli client available at https://github.com/micropython/webrepl):
+
+    # on REPL terminal
+    import webrepl_setup
+
+- REPL: what is my IP ?
+
+    network.WLAN().ifconfig()
