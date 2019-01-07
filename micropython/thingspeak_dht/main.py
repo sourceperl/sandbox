@@ -1,0 +1,84 @@
+# Publish DHT value and water level to Thingspeak using MQTT
+# use mycropython on an ESP8266 NodeMCU board
+
+import dht
+import machine
+import network
+from umqtt.robust import MQTTClient
+import urandom
+import sys
+import time
+
+# some const
+from private_wifi import WIFI_SSID, WIFI_PWD
+from private_thingspeak import TS_USER_ID, TS_MQTT_API_KEY, TS_CHANNEL_ID, TS_CHANNEL_W_API_KEY
+TS_SRV = "mqtt.thingspeak.com"
+TS_PUBLISH_PERIOD = 30
+
+# turn off access point interface (default is on)
+ap_if = network.WLAN(network.AP_IF)
+ap_if.active(False)
+
+# turn on station interface (default is off) and connect to WIFI_SSID
+sta_if = network.WLAN(network.STA_IF)
+sta_if.active(True)
+sta_if.connect(WIFI_SSID, WIFI_PWD)
+
+# wait for connection
+t = 0
+while True:
+    if sta_if.isconnected():
+        break
+    print("try to connect to %s (%d)" % (WIFI_SSID, t))
+    t += 1
+    time.sleep(1.0)
+print("connect to %s ok" % WIFI_SSID)
+
+# IO setup
+water_lvl = machine.Pin(15, machine.Pin.OUT)
+adc = machine.ADC(0)
+dht11 = dht.DHT11(machine.Pin(12))
+dht22 = dht.DHT22(machine.Pin(5))
+
+# connect to TS MQTT broker
+client = MQTTClient(client_id="client_%s" % urandom.getrandbits(16),
+                    server=TS_SRV,
+                    user=TS_USER_ID,
+                    password=TS_MQTT_API_KEY,
+                    ssl=False)
+
+while True:
+    try:
+        # connect to server
+        client.connect()
+        print("connect to server %s ok" % TS_SRV)
+
+        # publish loop
+        try:
+            while True:
+                # read sensors
+                water_lvl.on()
+                dht11.measure()
+                dht22.measure()
+                percent_lvl = 100 * adc.read() / 1023
+                water_lvl.off()
+                # format and publish message
+                topic = "channels/%s/publish/%s" % (TS_CHANNEL_ID, TS_CHANNEL_W_API_KEY)
+                payload = "field1=%d&field2=%d&field3=%d&field4=%d&field5=%d" % (dht11.temperature(), dht11.humidity(),
+                                                                                 dht22.temperature(), dht22.humidity(),
+                                                                                 percent_lvl)
+                client.publish(topic, payload)
+                print("publish %s to %s" % (payload, topic))
+                # wait for next loop
+                time.sleep(TS_PUBLISH_PERIOD)
+        except Exception as e:
+            sys.print_exception(e)
+
+        # disconnect to server
+        client.disconnect()
+        print("disconnect from server %s" % TS_SRV)
+        # avoid connect/disconnect buzzy loop on except
+        time.sleep(TS_PUBLISH_PERIOD)
+    except Exception as e:
+        sys.print_exception(e)
+        time.sleep(TS_PUBLISH_PERIOD)
