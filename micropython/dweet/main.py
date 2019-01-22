@@ -7,11 +7,12 @@ from private_dweet import DW_UUID
 PUBLISH_PERIOD = 15
 
 # init
-gc.enable()
 i = 0
 
 # main loop
 while True:
+    # run a garbage collection
+    gc.collect()
     # format and publish message
     i += 1
     # try:
