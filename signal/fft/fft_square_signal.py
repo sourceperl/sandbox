@@ -30,7 +30,7 @@ x = np.linspace(0.0, (nb - 1) * Ts, nb)
 
 # compute fft
 yf = fftpack.fft(y_samples)
-xf = np.linspace(0.0, 1.0 / (2.0 * Ts), nb / 2)
+xf = np.linspace(0.0, 1.0 / (2.0 * Ts), nb // 2)
 ya = 2.0 / nb * np.abs(yf[:nb // 2])
 
 # plot 1 data
