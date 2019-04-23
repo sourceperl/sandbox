@@ -23,7 +23,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # build wav spectrogram
     sample_rate, samples = wavfile.read(args.filename)
-    frequencies, times, spectrogram = signal.spectrogram(samples, sample_rate, nperseg=4096)
+    frequencies, times, spectrogram = signal.spectrogram(samples, sample_rate, nperseg=1024)
     # plot waterfall
     plt.pcolormesh(times, frequencies, spectrogram)
     plt.colorbar()
