@@ -111,6 +111,6 @@ lab/
 
 # private info
 .private_config
-private_*.py
-private_*.xls
-private_*.xlsx
+private_*
+*.xls
+*.xlsx
