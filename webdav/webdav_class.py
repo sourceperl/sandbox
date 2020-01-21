@@ -27,9 +27,10 @@ class WebDAVError(Exception):
 
 
 class WebDAV:
-    def __init__(self, url, username='', password=''):
+    def __init__(self, url, username='', password='', timeout=5.0):
         # public
         self.last_http_code = 0
+        self.timeout = timeout
         # private
         self._url = url
         self._url_path = urlparse(self._url).path
@@ -43,7 +44,8 @@ class WebDAV:
 
     def upload(self, file_path, content=b''):
         # do request
-        r = self._session.request(method='PUT', url=self._url_with_path(file_path), data=content, verify=False)
+        r = self._session.request(method='PUT', url=self._url_with_path(file_path),
+                                  data=content, timeout=self.timeout, verify=False)
         self.last_http_code = r.status_code
         # return status (True if upload ok)
         # HTTP_CREATED => create file, HTTP_NO_CONTENT => update an existing file
@@ -53,7 +55,8 @@ class WebDAV:
 
     def download(self, file_path):
         # do request
-        r = self._session.request(method='GET', url=self._url_with_path(file_path), verify=False)
+        r = self._session.request(method='GET', url=self._url_with_path(file_path),
+                                  timeout=self.timeout, verify=False)
         self.last_http_code = r.status_code
         # return file content if request ok, None if error
         if r.status_code == HTTP_OK:
@@ -64,7 +67,8 @@ class WebDAV:
 
     def delete(self, file_path):
         # do request
-        r = self._session.request(method='DELETE', url=self._url_with_path(file_path), verify=False)
+        r = self._session.request(method='DELETE', url=self._url_with_path(file_path),
+                                  timeout=self.timeout, verify=False)
         self.last_http_code = r.status_code
         # return status (True if file delete is ok)
         if r.status_code != HTTP_NO_CONTENT:
@@ -73,7 +77,8 @@ class WebDAV:
 
     def mkdir(self, dir_path):
         # do request
-        r = self._session.request(method='MKCOL', url=self._url_with_path(dir_path), verify=False)
+        r = self._session.request(method='MKCOL', url=self._url_with_path(dir_path),
+                                  timeout=self.timeout, verify=False)
         self.last_http_code = r.status_code
         # return status (True if directory is created)
         if r.status_code != HTTP_CREATED:
@@ -89,7 +94,8 @@ class WebDAV:
         # do request
         r = self._session.request(method='PROPFIND',
                                   url=self._url_with_path(path),
-                                  data=propfind_request, headers={'Depth': '%i' % depth}, verify=False)
+                                  data=propfind_request, headers={'Depth': '%i' % depth},
+                                  timeout=self.timeout, verify=False)
         self.last_http_code = r.status_code
         # check result
         if self.last_http_code == HTTP_MULTI_STATUS:
@@ -118,6 +124,7 @@ class WebDAV:
                 elif href.startswith(self._url_path):
                     href = href[len(self._url_path):]
                 file_path = unquote(href)
+                file_path = file_path[len(path):]
                 # feed result list
                 results_l.append(dict(file_path=file_path, content_length=content_length,
                                       dt_last_modified=dt_last_modified))
