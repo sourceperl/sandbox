@@ -4,27 +4,27 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
 
-#  some functions
-def sigmoid(x, height, change_rate=1.0, x_delta=0):
+# some consts
+FRAME_COUNT = 100
+
+
+# some functions
+def sigmoid(x, height, change_rate=-1.0, x_delta=0):
     return height / (1 + np.exp(change_rate * (x - x_delta)))
-
-
-# load RAW signal from txt file
-full_raw_sig = np.genfromtxt('raw_data.txt', dtype=float)
 
 
 # plot animation function
 def animate(i):
     # to numpy
-    sig_begin_at = (i % 40) * 10
+    sig_begin_at = i % 400
     sig = full_raw_sig[sig_begin_at:sig_begin_at + 101]
+    x = np.arange(sig.size)
 
     # good model define
-    x = np.arange(sig.size)
     mod_start_index = 17
-    mod_max = .5
 
     # max part
+    mod_max = .5
     mod_max += sigmoid(x, -4.5, -1.1, mod_start_index + 4)
     mod_max += sigmoid(x, 2.0, -0.9, mod_start_index + 19)
     mod_max += sigmoid(x, -1.5, -0.9, mod_start_index + 50)
@@ -60,15 +60,20 @@ def animate(i):
     ax2.plot(mod_max, 'r--', label='max')
     ax2.plot(mod_min, 'b--', label='min')
     ax2.fill_between(x, mod_max, mod_min, color='green' if sig_match else 'red', alpha=0.3)
-    ax2.set_xlabel('mean deviation=%.2f %%' % sig_dev,
+    ax2.set_xlabel('mean deviation=%.2f %% (frame %i/%i)' % (sig_dev, i+1, FRAME_COUNT),
                    fontdict=dict(color='green' if sig_match else 'red'))
     ax2.set_ylabel('signal deviation (in %)')
     ax2.legend()
     ax2.grid()
 
 
+# load RAW signal from txt file
+full_raw_sig = np.genfromtxt('raw_data.txt', dtype=float)
+# animation setup
 fig, (ax1, ax2) = plt.subplots(nrows=2, ncols=1)
 fig.canvas.set_window_title('Signal shape finder')
-ani = animation.FuncAnimation(fig, animate, interval=1000)
-fig.autofmt_xdate()
+ani = animation.FuncAnimation(fig, animate, frames=FRAME_COUNT, interval=100, repeat=False)
+# movie save (duration (in s) = frames * 1 / fps)
+# ani.save('out.mp4', fps=10, dpi=300)
+# display animation (duration (in s) = frames * interval / 1000)
 plt.show()
