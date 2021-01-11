@@ -1,62 +1,129 @@
 #!/usr/bin/env python3
 
-import tkinter as tk
+from ipaddress import IPv4Address, IPv4Interface
 import socket
+import struct
 import subprocess
+import tkinter as tk
+
+# some consts
+DEFAULT_IP = '10.0.0.100'
+DEFAULT_MASK = '255.255.255.0'
+DEFAULT_GW = '10.0.0.1'
 
 
 # some functions
-def is_valid_ipv4_address(address):
+def get_default_gw():
+    with open("/proc/net/route") as fh:
+        for line in fh:
+            fields = line.strip().split()
+            if fields[1] != '00000000' or not int(fields[3], 16) & 2:
+                # If not default route or not RTF_GATEWAY, skip it
+                continue
+            return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
+
+
+def get_current_ip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        socket.inet_pton(socket.AF_INET, address)
-    except socket.error:
-        return False
-    return True
-
-
-def get_ips_list():
-    return subprocess.check_output(['hostname', '--all-ip-addresses']).split()
+        # doesn't even have to be reachable
+        s.connect(('10.255.255.255', 1))
+        ip = s.getsockname()[0]
+    except Exception:
+        ip = '127.0.0.1'
+    finally:
+        s.close()
+    return ip
 
 
 # some class
 class MainFrame(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
+        # public
         self.parent = parent
+        # private
+        self._ipv4_interface = IPv4Interface('%s/%s' % (DEFAULT_IP, DEFAULT_MASK))
+        self._gw_address = IPv4Address(DEFAULT_GW)
         # tk strings vars
-        self.set_ipv4_str = tk.StringVar(value='10.0.0.1')
+        self.set_ipv4_str = tk.StringVar(value=DEFAULT_IP)
+        self.set_mask_str = tk.StringVar(value=DEFAULT_MASK)
+        self.set_gw_str = tk.StringVar(value=DEFAULT_GW)
         self.ip_status_str = tk.StringVar(value='')
         # widgets setup
+        # IPv4
+        tk.Label(self, font=('Verdana', 16), text='@IPv4/masque').grid(row=0, column=0, padx=10)
         self.ent_ipv4 = tk.Entry(self, width='16', justify=tk.CENTER,
-                                 font=('Verdana', 30), textvariable=self.set_ipv4_str)
-        self.ent_ipv4.pack(anchor='center', expand=True)
-        self.but_set_ipv4 = tk.Button(self, text='Affectation de l\'adresse',
-                                      font=('Verdana', 20), command=self.set_ipv4_addr)
-        self.but_set_ipv4.pack(anchor='center', expand=True, ipadx=20, ipady=20)
-        self.lab_ips = tk.Label(self, justify=tk.CENTER, font=('Verdana', 20), textvariable=self.ip_status_str)
-        self.lab_ips.pack(anchor='center', expand=True, ipadx=50, ipady=50)
+                                 font=('Verdana', 16), textvariable=self.set_ipv4_str)
+        self.ent_ipv4.grid(row=0, column=1)
+        # Mask
+        tk.Label(self, font=('Verdana', 16), text='/').grid(row=0, column=2)
+        self.ent_mask = tk.Entry(self, width='16', justify=tk.CENTER,
+                                 font=('Verdana', 16), textvariable=self.set_mask_str)
+        self.ent_mask.grid(row=0, column=3)
+        # Valid button
+        self.but_set_ipv4 = tk.Button(self, text='Set',
+                                      font=('Verdana', 16), command=self.set_ipv4_addr)
+        self.but_set_ipv4.grid(row=0, column=4, padx=10, pady=5, ipadx=10, ipady=10)
+        # Gateway
+        tk.Label(self, font=('Verdana', 16), text='Passerelle').grid(row=1, column=0, padx=10)
+        self.ent_gw = tk.Entry(self, width='16', justify=tk.CENTER,
+                               font=('Verdana', 16), textvariable=self.set_gw_str)
+        self.ent_gw.grid(row=1, column=1, pady=20)
+        # Valid button
+        self.but_set_gw = tk.Button(self, text='Set',
+                                    font=('Verdana', 16), command=self.set_gw_addr)
+        self.but_set_gw.grid(row=1, column=4, padx=10, pady=5, ipadx=10, ipady=10)
+        # Status label
+        self.lab_status = tk.Label(self, justify=tk.CENTER, font=('Verdana', 16),
+                                   textvariable=self.ip_status_str, bg='white')
+        self.lab_status.grid(row=2, columnspan=5, pady=20, sticky='EW')
         # periodic job
         self.do_every(self.every_1s_job, every_ms=1000)
         # install callback
-        self.set_ipv4_str.trace('w', self.ipv4_str_update)
+        self.set_ipv4_str.trace('w', self.on_entry_update)
+        self.set_mask_str.trace('w', self.on_entry_update)
+        self.set_gw_str.trace('w', self.on_entry_update)
 
-    def ipv4_str_update(self, *args):
-        if is_valid_ipv4_address(self.set_ipv4_str.get()):
+    def on_entry_update(self, *args):
+        # IP/mask update
+        try:
+            self._ipv4_interface = IPv4Interface('%s/%s' % (self.set_ipv4_str.get(), self.set_mask_str.get()))
             self.ent_ipv4.config(bg='white')
+            self.ent_mask.config(bg='white')
             self.but_set_ipv4.config(state='normal')
-        else:
+        except ValueError:
             self.ent_ipv4.config(bg='red')
+            self.ent_mask.config(bg='red')
             self.but_set_ipv4.config(state='disabled')
+        # Gateway update
+        try:
+            self._gw_address = IPv4Address(self.set_gw_str.get())
+            if self._gw_address not in self._ipv4_interface.network:
+                raise ValueError
+            self.ent_gw.config(bg='white')
+            self.but_set_gw.config(state='normal')
+        except:
+            self.ent_gw.config(bg='red')
+            self.but_set_gw.config(state='disabled')
 
     def set_ipv4_addr(self):
-        set_cmd = 'sudo ifconfig eth0:1 %s' % self.set_ipv4_str.get()
+        set_cmd = 'sudo ifconfig eth0:1 %s netmask %s' % (self._ipv4_interface, self.set_mask_str.get())
+        print(set_cmd.split())
         subprocess.call(set_cmd.split(), timeout=2.0)
 
+    def set_gw_addr(self):
+        # remove all default gw
+        rm_cmd = 'sudo ip route del 0/0'
+        print((rm_cmd.split()))
+        subprocess.call((rm_cmd.split()))
+        # set new default gw
+        set_cmd = 'sudo ip route add default via %s dev eth0' % self._gw_address
+        print(set_cmd.split())
+        subprocess.call(set_cmd.split())
+
     def every_1s_job(self):
-        if self.set_ipv4_str.get().encode('utf8') in get_ips_list():
-            self.ip_status_str.set('Adresse IP OK')
-        else:
-            self.ip_status_str.set('Adresse IP non défini')
+        self.ip_status_str.set('IP: %s\ngateway: %s' % (get_current_ip(), get_default_gw()))
 
     def do_every(self, do_cmd, every_ms=1000):
         do_cmd()
@@ -67,5 +134,5 @@ if __name__ == '__main__':
     app = tk.Tk()
     app.wm_title('IPv4 setup')
     app.attributes('-fullscreen', True)
-    MainFrame(app).pack(side='top', fill='both', expand=True)
+    MainFrame(app).place(relx=0.5, rely=0.3, anchor=tk.CENTER)
     app.mainloop()
