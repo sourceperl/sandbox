@@ -1,39 +1,17 @@
 #!/usr/bin/env python3
 
+from netifaces import ifaddresses, gateways, AF_INET
 from ipaddress import IPv4Address, IPv4Interface
 import socket
 import struct
 import subprocess
 import tkinter as tk
 
+
 # some consts
 DEFAULT_IP = '10.0.0.100'
 DEFAULT_MASK = '255.255.255.0'
 DEFAULT_GW = '10.0.0.1'
-
-
-# some functions
-def get_default_gw():
-    with open("/proc/net/route") as fh:
-        for line in fh:
-            fields = line.strip().split()
-            if fields[1] != '00000000' or not int(fields[3], 16) & 2:
-                # If not default route or not RTF_GATEWAY, skip it
-                continue
-            return socket.inet_ntoa(struct.pack("<L", int(fields[2], 16)))
-
-
-def get_current_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't even have to be reachable
-        s.connect(('10.255.255.255', 1))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = '127.0.0.1'
-    finally:
-        s.close()
-    return ip
 
 
 # some class
@@ -108,7 +86,7 @@ class MainFrame(tk.Frame):
             self.but_set_gw.config(state='disabled')
 
     def set_ipv4_addr(self):
-        set_cmd = 'sudo ifconfig eth0:1 %s netmask %s' % (self._ipv4_interface, self.set_mask_str.get())
+        set_cmd = 'sudo ifconfig eth0 %s up' % self._ipv4_interface
         print(set_cmd.split())
         subprocess.call(set_cmd.split(), timeout=2.0)
 
@@ -123,7 +101,23 @@ class MainFrame(tk.Frame):
         subprocess.call(set_cmd.split())
 
     def every_1s_job(self):
-        self.ip_status_str.set('IP: %s\ngateway: %s' % (get_current_ip(), get_default_gw()))
+        # get IPv4 configuration
+        try:
+            eth0_d = ifaddresses('eth0')[AF_INET][0]
+            ip = eth0_d['addr']
+            mask = eth0_d['netmask']
+        except:
+            ip = 'n/a'
+            mask = 'n/a'
+        # get default gateway data
+        try:
+            gw_d = gateways()
+            gw = gw_d['default'][AF_INET][0]
+        except:
+            gw = 'n/a'
+        # update ip_status label
+        status_str = 'Configuration actuelle\nIPv4: %s\nMasque: %s\nPasserelle: %s'
+        self.ip_status_str.set(status_str % (ip, mask, gw))
 
     def do_every(self, do_cmd, every_ms=1000):
         do_cmd()
