@@ -31,7 +31,7 @@ class NumPad(tk.Frame):
         # numpad create
         for row, line in enumerate(NumPad.btn_map):
             for column, key in enumerate(line):
-                cmd = lambda x=key: self._on_key_press(x)
+                cmd = lambda k=key: self._on_key_press(k)
                 self.btn_key_d[key] = tk.Button(self, text=key,
                                                 font=('Verdana', 16),
                                                 width=5, command=cmd)
@@ -157,21 +157,21 @@ class MainFrame(tk.Frame):
         try:
             if_addr_d = ifaddresses(ETH_IF)[AF_LINK][0]
             mac = if_addr_d['addr']
-        except:
+        except (ValueError, IndexError):
             mac = 'n/a'
         # get IPv4 configuration
         try:
             if_addr_d = ifaddresses(ETH_IF)[AF_INET][0]
             ip = if_addr_d['addr']
             mask = if_addr_d['netmask']
-        except:
+        except (ValueError, IndexError):
             ip = 'n/a'
             mask = 'n/a'
         # get default gateway data
         try:
             gw_d = gateways()
             gw = gw_d['default'][AF_INET][0]
-        except:
+        except (ValueError, IndexError):
             gw = 'n/a'
         # update ip_status label
         status_str = 'Configuration actuelle de l\'interface %s (%s)\nIPv4: %s\nMasque: %s\nPasserelle: %s'
