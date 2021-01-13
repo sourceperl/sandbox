@@ -157,21 +157,21 @@ class MainFrame(tk.Frame):
         try:
             if_addr_d = ifaddresses(ETH_IF)[AF_LINK][0]
             mac = if_addr_d['addr']
-        except (ValueError, IndexError):
+        except (ValueError, KeyError):
             mac = 'n/a'
         # get IPv4 configuration
         try:
             if_addr_d = ifaddresses(ETH_IF)[AF_INET][0]
             ip = if_addr_d['addr']
             mask = if_addr_d['netmask']
-        except (ValueError, IndexError):
+        except (ValueError, KeyError):
             ip = 'n/a'
             mask = 'n/a'
         # get default gateway data
         try:
             gw_d = gateways()
             gw = gw_d['default'][AF_INET][0]
-        except (ValueError, IndexError):
+        except (ValueError, KeyError):
             gw = 'n/a'
         # update ip_status label
         status_str = 'Configuration actuelle de l\'interface %s (%s)\nIPv4: %s\nMasque: %s\nPasserelle: %s'
