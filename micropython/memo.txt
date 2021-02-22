@@ -3,9 +3,14 @@
     # erase ESP8266 flash
     esptool.py --port /dev/ttyUSB0 erase_flash
 
-    # upload micropython v1.9.4 (firmware available at http://micropython.org/download)
-    wget http://micropython.org/resources/firmware/esp8266-20180511-v1.9.4.bin
-    esptool.py --port /dev/ttyUSB0 --baud 460800 write_flash --flash_size=detect -fm dio 0 esp8266-20180511-v1.9.4.bin
+    # upload micropython v1.14 (firmware available at http://micropython.org/download/esp8266/)
+    wget http://micropython.org/resources/firmware/esp8266-20210202-v1.14.bin
+    esptool.py --port /dev/ttyUSB0 --baud 460800 write_flash --flash_size=detect -fm dio 0 esp8266-20210202-v1.14.bin
+
+    # wifi access-point is turn on by default (ESSID is MicroPython-xxxxxx)
+    # to disable add this to boot.py
+    import network
+    network.WLAN(network.AP_IF).active(False)
 
 - tool to manage files (put, get, rm...) on micropython flash storage :
 
