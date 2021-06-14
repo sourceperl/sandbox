@@ -32,7 +32,7 @@ class WebDAV:
         self.last_http_code = 0
         self.timeout = timeout
         # private
-        self._url = url
+        self._url = url if url.endswith('/') else url + '/'
         self._url_path = urlparse(self._url).path
         self._session = requests.Session()
         # auth
