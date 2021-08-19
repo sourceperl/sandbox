@@ -29,20 +29,20 @@ ACON_CPT = 'Aconcagua comptage'
 
 # build directed graph (from modbus client to server)
 g = graphviz.Digraph('mbus_flow')
-g.attr('node', shape='rectangle', style='filled', color='grey', fillcolor='palegreen', penwidth='2')
-g.attr('edge', color='grey', penwidth='2')
+g.attr('node', shape='rectangle', style='filled', color='grey', fillcolor='goldenrod', penwidth='2', fontsize='28')
+g.attr('edge', color='grey', penwidth='8', fontsize='28')
 
 
 # node define
 with g.subgraph(name='cluster_cmp') as c:
-    c.attr(label='Compression')
+    c.attr(label='Compression', fontsize='36')
     c.node(API_7)
     c.node(SUP_CMP)
 
 with g.subgraph(name='cluster_cpt') as c:
-    c.attr(label='Comptage')
+    c.attr(label='Comptage', fontsize='36')
     c.node(API_G1)
-    c.node(API_3, color='darkorange',penwidth='4')
+    c.node(API_3, color='darkorange', penwidth='6')
     c.node(ACON_CPT)
     c.node(PSLS_BLA2)
     c.node(PSLS_LAMB)
@@ -50,7 +50,7 @@ with g.subgraph(name='cluster_cpt') as c:
     c.node(SUP_CPT)
 
 with g.subgraph(name='cluster_bla') as c:
-    c.attr(label='Blaregnies')
+    c.attr(label='Blaregnies', fontsize='36')
     c.node(FLX_DS1, shape='doublecircle')
     c.node(FLX_DS2, shape='doublecircle')
     c.node(FLX_MW_TRA)
