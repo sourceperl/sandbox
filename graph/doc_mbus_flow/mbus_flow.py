@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # example of using graphviz (with python module) to document a modbus flowchart
+
 # sudo apt install python3-graphviz
 import graphviz
 
@@ -28,7 +29,9 @@ ACON_CPT = 'Aconcagua comptage'
 
 # build directed graph (from modbus client to server)
 g = graphviz.Digraph('mbus_flow')
-g.attr('node', shape='rectangle', style='filled')
+g.attr('node', shape='rectangle', style='filled', color='grey', fillcolor='palegreen', penwidth='2')
+g.attr('edge', color='grey', penwidth='2')
+
 
 # node define
 with g.subgraph(name='cluster_cmp') as c:
@@ -39,7 +42,7 @@ with g.subgraph(name='cluster_cmp') as c:
 with g.subgraph(name='cluster_cpt') as c:
     c.attr(label='Comptage')
     c.node(API_G1)
-    c.node(API_3, color='darkorange')
+    c.node(API_3, color='darkorange',penwidth='4')
     c.node(ACON_CPT)
     c.node(PSLS_BLA2)
     c.node(PSLS_LAMB)
@@ -85,3 +88,4 @@ g.edge(API_7, API_3, label='30p')
 g.edge(API_7, API_3, label='GIN')
 # build
 g.view()
+#print(g.source)
