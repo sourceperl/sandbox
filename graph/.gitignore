@@ -1,0 +1,3 @@
+# ignore Graphviz produced files
+*.gv
+*.pdf
