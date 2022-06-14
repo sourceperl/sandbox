@@ -3,8 +3,9 @@
 """Prometheus HTTP endpoint template."""
 
 from enum import Enum
-from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from random import randint
+import socket
 from threading import Thread, Lock
 from typing import Any
 import time
@@ -12,46 +13,107 @@ import time
 
 class MetricType(Enum):
     """Definition of metric types."""
-    counter = 'counter'
-    gauge = 'gauge'
-    histogram = 'histogram'
-    summary = 'summary'
-    untyped = 'untyped'
+    COUNTER = 'counter'
+    GAUGE = 'gauge'
+    HISTORGRAM = 'histogram'
+    SUMMARY = 'summary'
+    UNTYPED = 'untyped'
 
 
-@dataclass
 class Metric:
     """A Prometheus Metric."""
-    name: str
-    value: Any = None
-    type: MetricType = MetricType.untyped
-    comment: str = ''
+    def __init__(self, name: str, m_type: MetricType = MetricType.UNTYPED, comment: str = ''):
+        # private vars
+        self._name = name
+        self._m_type = m_type
+        self._comment = None
+        self._th_lock = Lock()
+        self._values_d = dict()
+        # public properties
+        self.comment = comment
+
+    @property
+    def name(self) -> str:
+        """Name of metric (read-only property)."""
+        return self._name
+
+    @property
+    def m_type(self) -> MetricType:
+        """Type of metric (read-only property)."""
+        return self._m_type
+
+    @property
+    def comment(self) -> str:
+        """Comment line for the metric."""
+        return self._comment
+
+    @comment.setter
+    def comment(self, value):
+        self._comment = value
+
+    def set(self, value, labels=dict()):
+        """Set a value for the metric with labels set in a dict.
+        We can remove it if value it set to None.
+        """
+        labels_str = ''
+        for k,v in labels.items():
+            if labels_str:
+                labels_str += ','
+            labels_str += f'{k}="{v}"'
+        with self._th_lock:
+            if value is None:
+                self._values_d.pop(labels_str, None)
+            else:
+                self._values_d[labels_str] = value
+
+    
+    def as_text(self) -> str:
+        """Format the metric as Prometheus exposition format text."""
+        txt = ''
+        with self._th_lock:
+            # if any value exists, format an exposition message
+            if self._values_d:
+                # add a comment line if defined
+                if self.comment:
+                    txt += f'# HELP {self.name} {self.comment}\n'
+                # add a type line if defined
+                if self.m_type is not MetricType.UNTYPED:
+                    txt += f'# TYPE {self.name} {self.m_type.value}\n'
+                # add every "name{labels} value" for the metric
+                for labels, value in self._values_d.items():
+                    if labels:
+                        txt += f'{self.name}{{{labels}}} {value}\n'
+                    else:
+                        txt += f'{self.name} {value}\n'
+        return txt
 
 
-class MetSrvShare:
-    """Threads share area."""
-    # public
-    srv_lock = Lock()
+class SrvMetricsList:
+    """A thread safe list for shares metrics with HTTP server."""
     # private
+    _th_lock = Lock()
     _metrics_l = list()
 
     @classmethod
     def add(cls, metric: Metric):
         """Add metric to server share list."""
-        with cls.srv_lock:
+        with cls._th_lock:
             cls._metrics_l.append(metric)
 
     @classmethod
     def remove(cls, metric: Metric):
         """Remove metric from server share list."""
-        with cls.srv_lock:
+        with cls._th_lock:
             cls._metrics_l.remove(metric)
 
     @classmethod
-    def as_list(cls) -> list:
-        """Metrics in a thread safe list."""
-        with cls.srv_lock:
-            return cls._metrics_l.copy()
+    def as_text(cls) -> bytes:
+        """Export metrics as Prometheus scrap file."""
+        txt = ''
+        with cls._th_lock:
+            for metric in cls._metrics_l:
+                txt += metric.as_text()
+        return txt
 
 
 class HandleRequests(BaseHTTPRequestHandler):
@@ -67,27 +129,23 @@ class HandleRequests(BaseHTTPRequestHandler):
 
     def do_GET(self):
         """Process HTTP GET request."""
-        if self.path == '/metrics':
-            # prometheus scrap endpoint
-            # headers
-            self.send_response(200)
-            self.send_header('Content-type', 'text/plain; charset=utf-8')
-            self.end_headers()
-            # body
-            msg = ''
-            for metric in MetSrvShare.as_list():
-                if metric.value is not None:
-                    if metric.comment:
-                        msg += f'# HELP {metric.name} Comment line for {metric.comment}\n'
-                    if metric.type is not MetricType.untyped:
-                        msg += f'# TYPE {metric.name} {metric.type.value}\n'
-                    msg += f'{metric.name} {metric.value}\n'
-            self.wfile.write(msg.encode('utf-8'))
-        else:
-            # nothing for you here
-            self.send_response(404)
-            self.end_headers()
-
+        # catch socket errors
+        try:
+            # for prometheus scrap endpoint
+            if self.path == '/metrics':
+                # headers
+                self.send_response(200)
+                self.send_header('Content-type', 'text/plain; charset=utf-8')
+                self.end_headers()
+                # body
+                self.wfile.write(SrvMetricsList.as_text().encode('utf-8'))
+            # on other path, nothing for you here
+            else:
+                # return HTTP 404 page not found
+                self.send_response(404)
+                self.end_headers()
+        except socket.error:
+            pass
 
 if __name__ == '__main__':
     # start HTTP server as a thread
@@ -96,15 +154,16 @@ if __name__ == '__main__':
     http_srv_th.start()
 
     # add metrics
-    my_metric_1 = Metric('my_metric_1', value=1, type=MetricType.gauge, comment='an amazing metric')
-    my_metric_2 = Metric('my_metric_2', value=2, type=MetricType.gauge, comment='another amazing metric')
+    my_metric_1 = Metric('my_metric_1', m_type=MetricType.GAUGE, comment='an amazing metric')
+    my_metric_2 = Metric('my_metric_2', m_type=MetricType.GAUGE, comment='another amazing metric')
 
     # share this metrics with http server
-    MetSrvShare.add(my_metric_1)
-    MetSrvShare.add(my_metric_2)
+    SrvMetricsList.add(my_metric_1)
+    SrvMetricsList.add(my_metric_2)
 
     # main loop
     while True:
-        my_metric_1.value = time.time()
-        my_metric_2.value = 42
-        time.sleep(1.0)
+        my_metric_1.set(42, labels=dict(foo='the meaning of life'))
+        my_metric_2.set(randint(0,100), labels=dict(foo='random'))
+        time.sleep(5.0)
+
