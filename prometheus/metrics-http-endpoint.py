@@ -52,7 +52,7 @@ class Metric:
     def comment(self, value):
         self._comment = value
 
-    def set(self, value, labels: dict = None):
+    def set(self, value, labels: dict = None, timestamp: int = None):
         """Set a value for the metric with labels set in a dict.
         We can remove it if value it set to None.
         """
@@ -60,17 +60,23 @@ class Metric:
         if labels is None:
             labels = dict()
         # build dict key labels_str
+        # "label_name1=label_value1,label_name2=label_value2,[...]"
         labels_str = ''
-        for k, v in labels.items():
+        for label_name, label_value in labels.items():
+            # add comma before next block
             if labels_str:
                 labels_str += ','
-            labels_str += f'{k}="{v}"'
+            # apply escapes to label_value
+            for rep_args in [('\\', '\\\\'), ('\n', '\\n'), ('"', '\\"')]:
+                label_value = str(label_value).replace(*rep_args)
+            # format label_str
+            labels_str += f'{label_name}="{label_value}"'
         # add/update or remove the value in the values dict
         with self._th_lock:
             if value is None:
                 self._values_d.pop(labels_str, None)
             else:
-                self._values_d[labels_str] = value
+                self._values_d[labels_str] = (value, timestamp)
 
     def as_text(self) -> str:
         """Format the metric as Prometheus exposition format text."""
@@ -80,16 +86,25 @@ class Metric:
             if self._values_d:
                 # add a comment line if defined
                 if self.comment:
-                    txt += f'# HELP {self.name} {self.comment}\n'
+                    # apply escapes to comment
+                    esc_comment = str(self.comment)
+                    for rep_args in [('\\', '\\\\'), ('\n', '\\n')]:
+                        esc_comment = esc_comment.replace(*rep_args)
+                    txt += f'# HELP {self.name} {esc_comment}\n'
                 # add a type line if defined
                 if self.m_type is not MetricType.UNTYPED:
                     txt += f'# TYPE {self.name} {self.m_type.value}\n'
-                # add every "name{labels} value" for the metric
-                for labels, value in self._values_d.items():
+                # add every "name{labels} value [timestamp]" for the metric
+                for labels, (value, timestamp) in self._values_d.items():
                     if labels:
-                        txt += f'{self.name}{{{labels}}} {value}\n'
+                        txt += f'{self.name}{{{labels}}} {value}'
                     else:
-                        txt += f'{self.name} {value}\n'
+                        txt += f'{self.name} {value}'
+                    # optional timestamp
+                    if timestamp is None:
+                        txt += '\n'
+                    else:
+                        txt += f' {timestamp}\n'
         return txt
 
 
