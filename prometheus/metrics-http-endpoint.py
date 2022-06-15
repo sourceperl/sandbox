@@ -22,6 +22,7 @@ class MetricType(Enum):
 
 class Metric:
     """A Prometheus Metric."""
+
     def __init__(self, name: str, m_type: MetricType = MetricType.UNTYPED, comment: str = ''):
         # private vars
         self._name = name
@@ -51,22 +52,26 @@ class Metric:
     def comment(self, value):
         self._comment = value
 
-    def set(self, value, labels=dict()):
+    def set(self, value, labels: dict = None):
         """Set a value for the metric with labels set in a dict.
         We can remove it if value it set to None.
         """
+        # labels arg
+        if labels is None:
+            labels = dict()
+        # build dict key labels_str
         labels_str = ''
-        for k,v in labels.items():
+        for k, v in labels.items():
             if labels_str:
                 labels_str += ','
             labels_str += f'{k}="{v}"'
+        # add/update or remove the value in the values dict
         with self._th_lock:
             if value is None:
                 self._values_d.pop(labels_str, None)
             else:
                 self._values_d[labels_str] = value
 
-    
     def as_text(self) -> str:
         """Format the metric as Prometheus exposition format text."""
         txt = ''
@@ -107,7 +112,7 @@ class SrvMetricsList:
             cls._metrics_l.remove(metric)
 
     @classmethod
-    def as_text(cls) -> bytes:
+    def as_text(cls) -> str:
         """Export metrics as Prometheus scrap file."""
         txt = ''
         with cls._th_lock:
@@ -119,7 +124,7 @@ class SrvMetricsList:
 class HandleRequests(BaseHTTPRequestHandler):
     """Custom HTTP handler"""
 
-    def version_string(self):
+    def version_string(self) -> str:
         """Replace default server banner."""
         return 'self-service here ;-)'
 
@@ -147,6 +152,7 @@ class HandleRequests(BaseHTTPRequestHandler):
         except socket.error:
             pass
 
+
 if __name__ == '__main__':
     # start HTTP server as a thread
     http_srv = ThreadingHTTPServer(('0.0.0.0', 8080), HandleRequests)
@@ -164,6 +170,5 @@ if __name__ == '__main__':
     # main loop
     while True:
         my_metric_1.set(42, labels=dict(foo='the meaning of life'))
-        my_metric_2.set(randint(0,100), labels=dict(foo='random'))
+        my_metric_2.set(randint(0, 100), labels=dict(foo='random'))
         time.sleep(5.0)
-
