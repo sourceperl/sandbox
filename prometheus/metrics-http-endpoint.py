@@ -5,6 +5,7 @@
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from random import randint
+import re
 import socket
 from threading import Thread, Lock
 from typing import Any
@@ -24,14 +25,21 @@ class Metric:
     """A Prometheus Metric."""
 
     def __init__(self, name: str, m_type: MetricType = MetricType.UNTYPED, comment: str = ''):
+        # arg metric name: name
+        if not re.fullmatch(r'[a-zA-Z_:][a-zA-Z\d_:]*', name):
+            raise ValueError(f'"{name}" is not a valid metric name')
+        else:
+            self._name = name
+        # arg metric type: m_type
+        if not type(m_type) is MetricType:
+            raise ValueError('m_type is of the wrong type (not a MetricType)')
+        else:
+            self._m_type = m_type
+        # arg metric comment: comment
+        self.comment = str(comment)
         # private vars
-        self._name = name
-        self._m_type = m_type
-        self._comment = None
         self._th_lock = Lock()
         self._values_d = dict()
-        # public properties
-        self.comment = comment
 
     @property
     def name(self) -> str:
@@ -42,15 +50,6 @@ class Metric:
     def m_type(self) -> MetricType:
         """Type of metric (read-only property)."""
         return self._m_type
-
-    @property
-    def comment(self) -> str:
-        """Comment line for the metric."""
-        return self._comment
-
-    @comment.setter
-    def comment(self, value):
-        self._comment = value
 
     def set(self, value, labels: dict = None, timestamp: int = None):
         """Set a value for the metric with labels set in a dict.
