@@ -4,7 +4,7 @@
 
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from random import randint
+from random import uniform
 import re
 import socket
 from threading import Thread, Lock
@@ -16,7 +16,7 @@ class MetricType(Enum):
     """Definition of metric types."""
     COUNTER = 'counter'
     GAUGE = 'gauge'
-    HISTORGRAM = 'histogram'
+    HISTOGRAM = 'histogram'
     SUMMARY = 'summary'
     UNTYPED = 'untyped'
 
@@ -26,15 +26,15 @@ class Metric:
 
     def __init__(self, name: str, m_type: MetricType = MetricType.UNTYPED, comment: str = ''):
         # arg metric name: name
-        if not re.fullmatch(r'[a-zA-Z_:][a-zA-Z\d_:]*', name):
-            raise ValueError(f'"{name}" is not a valid metric name')
-        else:
+        if re.fullmatch(r'[a-zA-Z_:][a-zA-Z\d_:]*', name):
             self._name = name
-        # arg metric type: m_type
-        if not type(m_type) is MetricType:
-            raise ValueError('m_type is of the wrong type (not a MetricType)')
         else:
+            raise ValueError(f'"{name}" is not a valid metric name')
+        # arg metric type: m_type
+        if type(m_type) is MetricType:
             self._m_type = m_type
+        else:
+            raise ValueError('m_type is of the wrong type (not a MetricType)')
         # arg metric comment: comment
         self.comment = str(comment)
         # private vars
@@ -51,7 +51,7 @@ class Metric:
         """Type of metric (read-only property)."""
         return self._m_type
 
-    def set(self, value, labels: dict = None, timestamp: int = None):
+    def set(self, value: Any, labels: dict = None, timestamp: int = None):
         """Set a value for the metric with labels set in a dict.
         We can remove it if value it set to None.
         """
@@ -174,15 +174,18 @@ if __name__ == '__main__':
     http_srv_th.start()
 
     # add metrics
-    my_metric_1 = Metric('my_metric_1', m_type=MetricType.GAUGE, comment='an amazing metric')
-    my_metric_2 = Metric('my_metric_2', m_type=MetricType.GAUGE, comment='another amazing metric')
+    my_metric_gauge = Metric('my_metric_gauge', m_type=MetricType.GAUGE, comment='an amazing gauge metric')
+    my_metric_counter = Metric('my_metric_counter', m_type=MetricType.COUNTER, comment='an amazing counter metric')
 
     # share this metrics with http server
-    SrvMetricsList.add(my_metric_1)
-    SrvMetricsList.add(my_metric_2)
+    SrvMetricsList.add(my_metric_gauge)
+    SrvMetricsList.add(my_metric_counter)
 
     # main loop
+    loop_count = 0
     while True:
-        my_metric_1.set(42, labels=dict(foo='the meaning of life'))
-        my_metric_2.set(randint(0, 100), labels=dict(foo='random'))
-        time.sleep(5.0)
+        loop_count += 1
+        my_metric_gauge.set(42.0, labels={'foo': 'const'})
+        my_metric_gauge.set(round(uniform(0, 100), 1), labels={'foo': 'rand'})
+        my_metric_counter.set(loop_count, labels={'foo': 'loop'})
+        time.sleep(1.0)
