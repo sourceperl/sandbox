@@ -22,20 +22,60 @@ class MetricType(Enum):
     UNTYPED = 'untyped'
 
 
+class HistogramValue:
+    """A class to store Histogram metric values."""
+
+    def __init__(self, buckets: dict = None, _sum: float = 0.0):
+        # private
+        self._th_lock = Lock()
+        self._buckets_d = {float('+inf'): 0}
+        # process args
+        if buckets is not None:
+            self.update(buckets)
+        self._sum = _sum
+
+    @property
+    def count(self):
+        """Histogram sample count."""
+        return self._buckets_d[float('+inf')]
+
+    @count.setter
+    def count(self, value):
+        self._buckets_d[float('+inf')] = value
+
+    @property
+    def sum(self):
+        """Histogram sample sum."""
+        return self._sum
+
+    @sum.setter
+    def sum(self, value):
+        self._sum = value
+
+    def update(self, buckets: dict):
+        """Update Histogram buckets values."""
+        self._buckets_d.update(buckets)
+
+    def clear(self):
+        """Clear Histogram values."""
+        self._buckets_d = {float('+inf'): 0}
+        self.sum = 0
+
+
 class Metric:
     """A Prometheus Metric."""
 
-    def __init__(self, name: str, m_type: MetricType = MetricType.UNTYPED, comment: str = ''):
+    def __init__(self, name: str, _type: MetricType = MetricType.UNTYPED, comment: str = ''):
         # arg metric name: name
         if re.fullmatch(r'[a-zA-Z_:][a-zA-Z\d_:]*', name):
             self._name = name
         else:
             raise ValueError(f'"{name}" is not a valid metric name')
-        # arg metric type: m_type
-        if type(m_type) is MetricType:
-            self._m_type = m_type
+        # arg metric type: type
+        if type(_type) is MetricType:
+            self._type = _type
         else:
-            raise ValueError('m_type is of the wrong type (not a MetricType)')
+            raise ValueError('type is of the wrong type (not a MetricType)')
         # arg metric comment: comment
         self.comment = str(comment)
         # private vars
@@ -48,9 +88,9 @@ class Metric:
         return self._name
 
     @property
-    def m_type(self) -> MetricType:
+    def type(self) -> MetricType:
         """Type of metric (read-only property)."""
-        return self._m_type
+        return self._type
 
     def set(self, value: Any, labels: dict = None, timestamp: int = None):
         """Set a value for the metric with labels set in a dict.
@@ -59,6 +99,14 @@ class Metric:
         # labels arg
         if labels is None:
             labels = dict()
+        # check value type
+        if value is not None:
+            if self._type is MetricType.HISTOGRAM and type(value) is not HistogramValue:
+                raise ValueError('value arg must be an HistogramValue for this type of metric.')
+            # elif self._type is MetricType.SUMMARY and type(value) is not SummaryValue:
+            #    raise ValueError('value arg must be a SummaryValue for this type of metric.')
+            elif type(value) not in [int, float]:
+                raise ValueError('value arg must be an int or float for this type of metric.')
         # build dict key labels_str
         # "label_name1=label_value1,label_name2=label_value2,[...]"
         labels_str = ''
@@ -92,8 +140,8 @@ class Metric:
                         esc_comment = esc_comment.replace(*rep_args)
                     txt += f'# HELP {self.name} {esc_comment}\n'
                 # add a type line if defined
-                if self.m_type is not MetricType.UNTYPED:
-                    txt += f'# TYPE {self.name} {self.m_type.value}\n'
+                if self.type is not MetricType.UNTYPED:
+                    txt += f'# TYPE {self.name} {self.type.value}\n'
                 # add every "name{labels} value [timestamp]" for the metric
                 for labels, (value, timestamp) in self._values_d.items():
                     if labels:
@@ -207,8 +255,8 @@ if __name__ == '__main__':
     metrics_srv.start()
 
     # add metrics
-    my_metric_gauge = Metric('my_metric_gauge', m_type=MetricType.GAUGE, comment='an amazing gauge metric')
-    my_metric_counter = Metric('my_metric_counter', m_type=MetricType.COUNTER, comment='an amazing counter metric')
+    my_metric_gauge = Metric('my_metric_gauge', _type=MetricType.GAUGE, comment='an amazing gauge metric')
+    my_metric_counter = Metric('my_metric_counter', _type=MetricType.COUNTER, comment='an amazing counter metric')
 
     # share this metrics with http server
     metrics_srv.add(my_metric_gauge)
