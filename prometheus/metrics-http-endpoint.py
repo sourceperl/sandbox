@@ -5,7 +5,7 @@
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from ipaddress import ip_address
-from random import uniform
+from random import random
 import re
 import socket
 from threading import Thread, Lock
@@ -20,46 +20,6 @@ class MetricType(Enum):
     HISTOGRAM = 'histogram'
     SUMMARY = 'summary'
     UNTYPED = 'untyped'
-
-
-class HistogramValue:
-    """A class to store Histogram metric values."""
-
-    def __init__(self, buckets: dict = None, _sum: float = 0.0):
-        # private
-        self._th_lock = Lock()
-        self._buckets_d = {float('+inf'): 0}
-        # process args
-        if buckets is not None:
-            self.update(buckets)
-        self._sum = _sum
-
-    @property
-    def count(self):
-        """Histogram sample count."""
-        return self._buckets_d[float('+inf')]
-
-    @count.setter
-    def count(self, value):
-        self._buckets_d[float('+inf')] = value
-
-    @property
-    def sum(self):
-        """Histogram sample sum."""
-        return self._sum
-
-    @sum.setter
-    def sum(self, value):
-        self._sum = value
-
-    def update(self, buckets: dict):
-        """Update Histogram buckets values."""
-        self._buckets_d.update(buckets)
-
-    def clear(self):
-        """Clear Histogram values."""
-        self._buckets_d = {float('+inf'): 0}
-        self.sum = 0
 
 
 class Metric:
@@ -99,12 +59,11 @@ class Metric:
         # labels arg
         if labels is None:
             labels = dict()
-        # check value type
+        # if value is set, check its type
         if value is not None:
-            if self._type is MetricType.HISTOGRAM and type(value) is not HistogramValue:
-                raise ValueError('value arg must be an HistogramValue for this type of metric.')
-            # elif self._type is MetricType.SUMMARY and type(value) is not SummaryValue:
-            #    raise ValueError('value arg must be a SummaryValue for this type of metric.')
+            if self._type is MetricType.HISTOGRAM or self._type is MetricType.SUMMARY:
+                if type(value) is not dict:
+                    raise ValueError('value arg must be a dict for this type of metric.')
             elif type(value) not in [int, float]:
                 raise ValueError('value arg must be an int or float for this type of metric.')
         # build dict key labels_str
@@ -128,6 +87,12 @@ class Metric:
 
     def as_text(self) -> str:
         """Format the metric as Prometheus exposition format text."""
+
+        def fmt_lbl(lbl: str, add: str = ''):
+            """Format labels for export file lines."""
+            lbl += f',{add}' if lbl and add else add
+            return f'{{{lbl}}}' if lbl else ''
+
         txt = ''
         with self._th_lock:
             # if any value exists, format an exposition message
@@ -143,16 +108,42 @@ class Metric:
                 if self.type is not MetricType.UNTYPED:
                     txt += f'# TYPE {self.name} {self.type.value}\n'
                 # add every "name{labels} value [timestamp]" for the metric
-                for labels, (value, timestamp) in self._values_d.items():
-                    if labels:
-                        txt += f'{self.name}{{{labels}}} {value}'
+                for labels_str, (value, timestamp) in self._values_d.items():
+                    if self._type is MetricType.HISTOGRAM:
+                        try:
+                            # search for required keys in dict value
+                            b_count = value['count']
+                            b_sum = value['sum']
+                            # extract bucket float values
+                            buckets_l = list()
+                            # harvest float key, skip others
+                            for k, v in value.items():
+                                try:
+                                    # non-float raise ValueError
+                                    float(k)
+                                    buckets_l.append((k, v))
+                                except ValueError:
+                                    pass
+                            # set alpha order, with le="+Inf" at end
+                            buckets_l = sorted(buckets_l)
+                            buckets_l.append(('+Inf', b_count))
+                            # add buckets lines
+                            for b_item, b_value in buckets_l:
+                                lbl_add = f'le="{b_item}"'
+                                txt += f'{self.name}_bucket{fmt_lbl(labels_str, add=lbl_add)} {b_value}\n'
+                            # add sum line
+                            txt += f'{self.name}_sum{fmt_lbl(labels_str)} {b_sum}\n'
+                            # add count line
+                            txt += f'{self.name}_count{fmt_lbl(labels_str)} {b_count}\n'
+                        except (IndexError, KeyError) as e:
+                            # TODO after debug set "pass" here
+                            print(e)
+                    elif self._type is MetricType.SUMMARY:
+                        pass
                     else:
-                        txt += f'{self.name} {value}'
-                    # optional timestamp
-                    if timestamp is None:
-                        txt += '\n'
-                    else:
-                        txt += f' {timestamp}\n'
+                        txt += f'{self.name}{fmt_lbl(labels_str)} {value}'
+                        # optional timestamp
+                        txt += f' {timestamp}\n' if timestamp else '\n'
         return txt
 
 
@@ -255,18 +246,21 @@ if __name__ == '__main__':
     metrics_srv.start()
 
     # add metrics
-    my_metric_gauge = Metric('my_metric_gauge', _type=MetricType.GAUGE, comment='an amazing gauge metric')
-    my_metric_counter = Metric('my_metric_counter', _type=MetricType.COUNTER, comment='an amazing counter metric')
+    my_metric_ratio = Metric('my_metric_ratio', _type=MetricType.GAUGE, comment='a gauge metric')
+    my_metric_total = Metric('my_metric_total', _type=MetricType.COUNTER, comment='a counter metric')
+    my_metric_histo = Metric('my_metric_histo', _type=MetricType.HISTOGRAM, comment='an histo metric')
 
     # share this metrics with http server
-    metrics_srv.add(my_metric_gauge)
-    metrics_srv.add(my_metric_counter)
+    metrics_srv.add(my_metric_ratio)
+    metrics_srv.add(my_metric_total)
+    metrics_srv.add(my_metric_histo)
 
     # main loop
     loop_count = 0
     while True:
         loop_count += 1
-        my_metric_gauge.set(42.0, labels={'foo': 'const'})
-        my_metric_gauge.set(round(uniform(0, 100), 1), labels={'foo': 'rand'})
-        my_metric_counter.set(loop_count, labels={'foo': 'loop'})
+        my_metric_ratio.set(0.42, labels={'foo': 'const'})
+        my_metric_ratio.set(round(random(), 4), labels={'foo': 'rand'})
+        my_metric_total.set(loop_count, labels={'foo': 'loop'})
+        my_metric_histo.set({'0.5': 4, '1.0': 10, 'count': 20, 'sum': 50.5})
         time.sleep(1.0)
