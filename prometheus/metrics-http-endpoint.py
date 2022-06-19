@@ -52,13 +52,13 @@ class Metric:
         """Type of metric (read-only property)."""
         return self._type
 
-    def set(self, value: Any, labels: dict = None, timestamp: int = None):
+    def set(self, value: Any, labels_d: dict = None, timestamp: int = None):
         """Set a value for the metric with labels set in a dict.
         We can remove it if value it set to None.
         """
         # labels arg
-        if labels is None:
-            labels = dict()
+        if labels_d is None:
+            labels_d = dict()
         # if value is set, check its type
         if value is not None:
             if self._type is MetricType.HISTOGRAM or self._type is MetricType.SUMMARY:
@@ -68,16 +68,7 @@ class Metric:
                 raise ValueError('value arg must be an int or float for this type of metric.')
         # build dict key labels_str
         # "label_name1=label_value1,label_name2=label_value2,[...]"
-        labels_str = ''
-        for label_name, label_value in labels.items():
-            # add comma before next block
-            if labels_str:
-                labels_str += ','
-            # apply escapes to label_value
-            for rep_args in [('\\', '\\\\'), ('\n', '\\n'), ('"', '\\"')]:
-                label_value = str(label_value).replace(*rep_args)
-            # format label_str
-            labels_str += f'{label_name}="{label_value}"'
+        labels_str = self.labels_d2str(labels_d)
         # add/update or remove the value in the values dict
         with self._th_lock:
             if value is None:
@@ -87,12 +78,6 @@ class Metric:
 
     def as_text(self) -> str:
         """Format the metric as Prometheus exposition format text."""
-
-        def fmt_lbl(lbl: str, add: str = ''):
-            """Format labels for export file lines."""
-            lbl += f',{add}' if lbl and add else add
-            return f'{{{lbl}}}' if lbl else ''
-
         txt = ''
         with self._th_lock:
             # if any value exists, format an exposition message
@@ -108,43 +93,110 @@ class Metric:
                 if self.type is not MetricType.UNTYPED:
                     txt += f'# TYPE {self.name} {self.type.value}\n'
                 # add every "name{labels} value [timestamp]" for the metric
-                for labels_str, (value, timestamp) in self._values_d.items():
+                for lbl_id_str, (lbl_content, timestamp) in self._values_d.items():
                     if self._type is MetricType.HISTOGRAM:
-                        try:
-                            # search for required keys in dict value
-                            b_count = value['count']
-                            b_sum = value['sum']
-                            # extract bucket float values
-                            buckets_l = list()
-                            # harvest float key, skip others
-                            for k, v in value.items():
-                                try:
-                                    # non-float raise ValueError
-                                    float(k)
-                                    buckets_l.append((k, v))
-                                except ValueError:
-                                    pass
-                            # set alpha order, with le="+Inf" at end
-                            buckets_l = sorted(buckets_l)
-                            buckets_l.append(('+Inf', b_count))
-                            # add buckets lines
-                            for b_item, b_value in buckets_l:
-                                lbl_add = f'le="{b_item}"'
-                                txt += f'{self.name}_bucket{fmt_lbl(labels_str, add=lbl_add)} {b_value}\n'
-                            # add sum line
-                            txt += f'{self.name}_sum{fmt_lbl(labels_str)} {b_sum}\n'
-                            # add count line
-                            txt += f'{self.name}_count{fmt_lbl(labels_str)} {b_count}\n'
-                        except (IndexError, KeyError) as e:
-                            # TODO after debug set "pass" here
-                            print(e)
+                        txt += self._data2txt_histogram(lbl_id_str, lbl_content)
                     elif self._type is MetricType.SUMMARY:
-                        pass
+                        txt += self._data2txt_summary(lbl_id_str, lbl_content)
                     else:
-                        txt += f'{self.name}{fmt_lbl(labels_str)} {value}'
-                        # optional timestamp
-                        txt += f' {timestamp}\n' if timestamp else '\n'
+                        txt += self._data2txt_default(lbl_id_str, lbl_content, timestamp)
         return txt
+
+    def _data2txt_histogram(self, lbl_id_str: str, lbl_content: dict) -> str:
+        try:
+            txt = ''
+            # search for required keys in dict value
+            b_count = lbl_content['count']
+            b_sum = lbl_content['sum']
+            # extract bucket float values
+            buckets_l = list()
+            # harvest float key, skip others
+            for k, v in lbl_content.items():
+                try:
+                    # non-float raise ValueError
+                    float(k)
+                    buckets_l.append((k, v))
+                except ValueError:
+                    pass
+            # set alpha order, with le="+Inf" at end
+            buckets_l = sorted(buckets_l)
+            buckets_l.append(('+Inf', b_count))
+            # add buckets lines
+            for b_item, b_value in buckets_l:
+                lbl_id_str_bck = self.labels_d2str({'le': b_item}, _from=lbl_id_str)
+                txt += f'{self.name}_bucket{self.lbl_f(lbl_id_str_bck)} {b_value}\n'
+            # add sum line
+            txt += f'{self.name}_sum{self.lbl_f(lbl_id_str)} {b_sum}\n'
+            # add count line
+            txt += f'{self.name}_count{self.lbl_f(lbl_id_str)} {b_count}\n'
+            return txt
+        except (IndexError, KeyError) as e:
+            # TODO after debug set "pass" here
+            print(e)
+            return ''
+
+    def _data2txt_summary(self, lbl_id_str: str, lbl_content: dict) -> str:
+        try:
+            txt = ''
+            # search for required keys in dict value
+            b_count = lbl_content['count']
+            b_sum = lbl_content['sum']
+            # extract bucket float values
+            buckets_l = list()
+            # harvest float key, skip others
+            for k, v in lbl_content.items():
+                try:
+                    # non-float raise ValueError
+                    float(k)
+                    buckets_l.append((k, v))
+                except ValueError:
+                    pass
+            # set alpha order
+            buckets_l = sorted(buckets_l)
+            # add buckets lines
+            for b_item, b_value in buckets_l:
+                lbl_str_bck = self.labels_d2str({'quantile': b_item}, _from=lbl_id_str)
+                txt += f'{self.name}{self.lbl_f(lbl_str_bck)} {b_value}\n'
+            # add sum line
+            txt += f'{self.name}_sum{self.lbl_f(lbl_id_str)} {b_sum}\n'
+            # add count line
+            txt += f'{self.name}_count{self.lbl_f(lbl_id_str)} {b_count}\n'
+            return txt
+        except (IndexError, KeyError) as e:
+            # TODO after debug set "pass" here
+            print(e)
+            return ''
+
+    def _data2txt_default(self, lbl_id_str: str, lbl_content: Any, timestamp: int) -> str:
+        txt = f'{self.name}{self.lbl_f(lbl_id_str)} {lbl_content}'
+        # optional timestamp
+        txt += f' {timestamp}\n' if timestamp else '\n'
+        return txt
+
+    @staticmethod
+    def labels_d2str(lbl_d: dict, _from: str = ''):
+        """"Convert labels dict {} to str "lbl_name1=lbl_val1,lbl_name2=lbl_val2,[...]".
+        Can add convert to an already convert, initial str.
+        """
+        lbl_str = _from
+        for lbl_name, lbl_val in lbl_d.items():
+            # check label name
+            if not re.fullmatch(r'[a-zA-Z_]\w*', lbl_name):
+                raise ValueError(f'"{lbl_name}" is not a valid label name')
+            # add comma before next block
+            if lbl_str:
+                lbl_str += ','
+            # apply escapes to label_value
+            for rep_args in [('\\', '\\\\'), ('\n', '\\n'), ('"', '\\"')]:
+                lbl_val = str(lbl_val).replace(*rep_args)
+            # format label_str
+            lbl_str += f'{lbl_name}="{lbl_val}"'
+        return lbl_str
+
+    @staticmethod
+    def lbl_f(lbl_s: str):
+        """Format label string for export file lines."""
+        return f'{{{lbl_s}}}' if lbl_s else ''
 
 
 class MetricsHttpSrv:
@@ -249,18 +301,23 @@ if __name__ == '__main__':
     my_metric_ratio = Metric('my_metric_ratio', _type=MetricType.GAUGE, comment='a gauge metric')
     my_metric_total = Metric('my_metric_total', _type=MetricType.COUNTER, comment='a counter metric')
     my_metric_histo = Metric('my_metric_histo', _type=MetricType.HISTOGRAM, comment='an histo metric')
+    my_metric_sumy = Metric('my_metric_sumy', _type=MetricType.SUMMARY, comment='a summary metric')
 
     # share this metrics with http server
     metrics_srv.add(my_metric_ratio)
     metrics_srv.add(my_metric_total)
     metrics_srv.add(my_metric_histo)
+    metrics_srv.add(my_metric_sumy)
 
     # main loop
     loop_count = 0
     while True:
         loop_count += 1
-        my_metric_ratio.set(0.42, labels={'foo': 'const'})
-        my_metric_ratio.set(round(random(), 4), labels={'foo': 'rand'})
-        my_metric_total.set(loop_count, labels={'foo': 'loop'})
-        my_metric_histo.set({'0.5': 4, '1.0': 10, 'count': 20, 'sum': 50.5})
+        my_metric_ratio.set(0.42, labels_d={'foo': 'const'})
+        my_metric_ratio.set(round(random(), 4), labels_d={'foo': 'rand'})
+        my_metric_total.set(loop_count, labels_d={'foo': 'loop'})
+        my_metric_histo.set({'0.05': 24054, '0.1': 33444, '0.2': 100392, '0.5': 129389, '1': 133988,
+                             'sum': 53423, 'count': 144320})
+        my_metric_sumy.set({'0.01': 3102, '0.05': 3272, '0.5': 4773, '0.9': 9001, '0.99': 76656,
+                            'sum': 1.7560473e+07, 'count': 2693})
         time.sleep(1.0)
