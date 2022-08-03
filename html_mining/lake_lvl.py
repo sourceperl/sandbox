@@ -55,6 +55,7 @@ try:
     # display results (convert obs_dt: UTC to local time zone)
     print(f'level NGF   : {lvl.m_ngf:>6.02f} m')
     print(f'level rel.  : {lvl.m_rel:>6.02f} m')
+    print(f'level       : {90 + lvl.m_rel:>6.02f} m')
     print(f'observation : {lvl.obs_dt.astimezone()}')
 except (IndexError, ValueError) as e:
     print(e)
