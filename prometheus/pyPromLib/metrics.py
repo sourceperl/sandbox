@@ -2,6 +2,7 @@
 
 from enum import Enum
 import re
+import time
 from threading import Lock
 from typing import Any
 
@@ -45,8 +46,9 @@ class Metric:
         """Type of metric (read-only property)."""
         return self._type
 
-    def set(self, value: Any, labels_d: dict = None, timestamp: int = None):
+    def set(self, value: Any, labels_d: dict = None, ts: float = None, ttl: float = None):
         """Set a value for the metric with labels set in a dict.
+        timestamp
         We can remove it if value it set to None.
         """
         # labels arg
@@ -54,25 +56,37 @@ class Metric:
             labels_d = dict()
         # if value is set, check its type
         if value is not None:
-            if self._type is MetricType.HISTOGRAM or self._type is MetricType.SUMMARY:
+            if self._type is MetricType.GAUGE:
+                if type(value) not in [bool, int, float]:
+                    raise ValueError('value arg must be bool, int or float for this type of metric.')
+            elif self._type is MetricType.COUNTER:
+                if type(value) not in [int, float]:
+                    raise ValueError('value arg must be int or float for this type of metric.')
+            elif self._type is MetricType.HISTOGRAM or self._type is MetricType.SUMMARY:
                 if type(value) is not dict:
                     raise ValueError('value arg must be a dict for this type of metric.')
-            elif type(value) not in [int, float]:
-                raise ValueError('value arg must be an int or float for this type of metric.')
         # build dict key labels_str
         # "label_name1=label_value1,label_name2=label_value2,[...]"
-        labels_str = self.labels_d2str(labels_d)
+        labels_str = self._labels_d2str(labels_d)
         # add/update or remove the value in the values dict
         with self._th_lock:
             if value is None:
                 self._values_d.pop(labels_str, None)
             else:
-                self._values_d[labels_str] = (value, timestamp)
-
+                expire_at = (time.monotonic() + ttl) if ttl else None
+                self._values_d[labels_str] = (value, ts, expire_at)
+    
     def as_text(self) -> str:
         """Format the metric as Prometheus exposition format text."""
         txt = ''
         with self._th_lock:
+            # purge expired value (reach ttl_s) from values dict
+            purge_l = []
+            for key, (_value, _timestamp_ms, expire_at) in self._values_d.items():
+                if expire_at and time.monotonic() > expire_at:
+                    purge_l.append(key)
+            for rm_key in purge_l:
+                self._values_d.pop(rm_key)
             # if any value exists, format an exposition message
             if self._values_d:
                 # add a comment line if defined
@@ -86,25 +100,25 @@ class Metric:
                 if self.type is not MetricType.UNTYPED:
                     txt += f'# TYPE {self.name} {self.type.value}\n'
                 # add every "name{labels} value [timestamp]" for the metric
-                for lbl_id_str, (lbl_content, timestamp) in self._values_d.items():
+                for lbl_id_str, (value, ts, _expire_at) in self._values_d.items():
                     if self._type is MetricType.HISTOGRAM:
-                        txt += self._data2txt_histogram(lbl_id_str, lbl_content)
+                        txt += self._data2txt_histogram(lbl_id_str, value)
                     elif self._type is MetricType.SUMMARY:
-                        txt += self._data2txt_summary(lbl_id_str, lbl_content)
+                        txt += self._data2txt_summary(lbl_id_str, value)
                     else:
-                        txt += self._data2txt_default(lbl_id_str, lbl_content, timestamp)
+                        txt += self._data2txt_default(lbl_id_str, value, ts)
         return txt
 
-    def _data2txt_histogram(self, lbl_id_str: str, lbl_content: dict) -> str:
+    def _data2txt_histogram(self, lbl_id_str: str, histo_d: dict) -> str:
         try:
             txt = ''
             # search for required keys in dict value
-            b_count = lbl_content['count']
-            b_sum = lbl_content['sum']
+            b_count = histo_d['count']
+            b_sum = histo_d['sum']
             # extract bucket float values
             buckets_l = list()
             # harvest float key, skip others
-            for k, v in lbl_content.items():
+            for k, v in histo_d.items():
                 try:
                     # non-float raise ValueError
                     float(k)
@@ -116,28 +130,28 @@ class Metric:
             buckets_l.append(('+Inf', b_count))
             # add buckets lines
             for b_item, b_value in buckets_l:
-                lbl_id_str_bck = self.labels_d2str({'le': b_item}, _from=lbl_id_str)
-                txt += f'{self.name}_bucket{self.lbl_f(lbl_id_str_bck)} {b_value}\n'
+                lbl_id_str_bck = self._labels_d2str({'le': b_item}, _from=lbl_id_str)
+                txt += f'{self.name}_bucket{self._lbl_f(lbl_id_str_bck)} {b_value}\n'
             # add sum line
-            txt += f'{self.name}_sum{self.lbl_f(lbl_id_str)} {b_sum}\n'
+            txt += f'{self.name}_sum{self._lbl_f(lbl_id_str)} {b_sum}\n'
             # add count line
-            txt += f'{self.name}_count{self.lbl_f(lbl_id_str)} {b_count}\n'
+            txt += f'{self.name}_count{self._lbl_f(lbl_id_str)} {b_count}\n'
             return txt
         except (IndexError, KeyError) as e:
             # TODO after debug set "pass" here
             print(e)
             return ''
 
-    def _data2txt_summary(self, lbl_id_str: str, lbl_content: dict) -> str:
+    def _data2txt_summary(self, lbl_id_str: str, sum_d: dict) -> str:
         try:
             txt = ''
             # search for required keys in dict value
-            b_count = lbl_content['count']
-            b_sum = lbl_content['sum']
+            b_count = sum_d['count']
+            b_sum = sum_d['sum']
             # extract bucket float values
             buckets_l = list()
             # harvest float key, skip others
-            for k, v in lbl_content.items():
+            for k, v in sum_d.items():
                 try:
                     # non-float raise ValueError
                     float(k)
@@ -148,26 +162,30 @@ class Metric:
             buckets_l = sorted(buckets_l)
             # add buckets lines
             for b_item, b_value in buckets_l:
-                lbl_str_bck = self.labels_d2str({'quantile': b_item}, _from=lbl_id_str)
-                txt += f'{self.name}{self.lbl_f(lbl_str_bck)} {b_value}\n'
+                lbl_str_bck = self._labels_d2str({'quantile': b_item}, _from=lbl_id_str)
+                txt += f'{self.name}{self._lbl_f(lbl_str_bck)} {b_value}\n'
             # add sum line
-            txt += f'{self.name}_sum{self.lbl_f(lbl_id_str)} {b_sum}\n'
+            txt += f'{self.name}_sum{self._lbl_f(lbl_id_str)} {b_sum}\n'
             # add count line
-            txt += f'{self.name}_count{self.lbl_f(lbl_id_str)} {b_count}\n'
+            txt += f'{self.name}_count{self._lbl_f(lbl_id_str)} {b_count}\n'
             return txt
         except (IndexError, KeyError) as e:
             # TODO after debug set "pass" here
             print(e)
             return ''
 
-    def _data2txt_default(self, lbl_id_str: str, lbl_content: Any, timestamp: int) -> str:
-        txt = f'{self.name}{self.lbl_f(lbl_id_str)} {lbl_content}'
-        # optional timestamp
-        txt += f' {timestamp}\n' if timestamp else '\n'
+    def _data2txt_default(self, lbl_id_str: str, value: Any, ts: int) -> str:
+        # prometheus metrics file accept 0/1 not False/True
+        if type(value) is bool:
+            value = int(value)
+        # init value line
+        txt = f'{self.name}{self._lbl_f(lbl_id_str)} {value}'
+        # optional timestamp at end of line
+        txt += f' {round(ts * 1000)}\n' if ts else '\n'
         return txt
 
     @staticmethod
-    def labels_d2str(lbl_d: dict, _from: str = ''):
+    def _labels_d2str(lbl_d: dict, _from: str = ''):
         """"Convert labels dict {} to str "lbl_name1=lbl_val1,lbl_name2=lbl_val2,[...]".
         Can add convert to an already convert, initial str.
         """
@@ -187,7 +205,7 @@ class Metric:
         return lbl_str
 
     @staticmethod
-    def lbl_f(lbl_s: str):
+    def _lbl_f(lbl_s: str):
         """Format label string for export file lines."""
         return f'{{{lbl_s}}}' if lbl_s else ''
 

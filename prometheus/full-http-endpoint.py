@@ -26,7 +26,7 @@ metrics_srv.add(my_metric_sumy)
 loop_count = 0
 while True:
     loop_count += 1
-    my_metric_ratio.set(0.42, labels_d={'foo': 'const'})
+    my_metric_ratio.set(0.42, labels_d={'foo': 'const'}, ts=time.time())
     my_metric_ratio.set(round(random(), 4), labels_d={'foo': 'rand'})
     my_metric_total.set(loop_count, labels_d={'foo': 'loop'})
     my_metric_histo.set({'0.05': 24054, '0.1': 33444, '0.2': 100392, '0.5': 129389, '1': 133988,

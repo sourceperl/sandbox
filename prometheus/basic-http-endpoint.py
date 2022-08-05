@@ -7,7 +7,7 @@ from pyPromLib.metrics import Metric, MetricType
 
 
 # start HTTP server
-metrics_srv = MetricsHttpSrv(bind='127.0.0.1', port=8081)
+metrics_srv = MetricsHttpSrv(bind='127.0.0.1', port=8080)
 metrics_srv.start()
 
 # add metrics
