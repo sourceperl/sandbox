@@ -10,7 +10,7 @@ from private_data import API_KEY
 
 
 # GET args
-data = urlencode(dict(key=API_KEY, field1=round(time.monotonic(), 2)))
+data = urlencode(dict(api_key=API_KEY, field1=round(time.monotonic(), 2)))
 
 # send data to thingspeak
 try:
