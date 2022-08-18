@@ -22,16 +22,16 @@ def thingspeak_job():
         data_d = dict()
         # populate it with valid redis values
         try:
-            r_value = int(red.get('wobbe_ready_bool'))
+            r_value = int(rdb.get('cvm16:good'))
             if r_value not in [0, 1]:
                 raise ValueError
             data_d['field1'] = r_value
         except (TypeError, ValueError):
-            logging.warning(f'unable to process redis key "wobbe_ready_bool" value must be 0 or 1')
+            logging.warning(f'unable to process redis key "cvm16:good" value must be 0 or 1')
         try:
-            data_d['field2'] = round(float(red.get('wobbe_value_float')))
+            data_d['field2'] = round(float(rdb.get('cvm16:wobbe')), 2)
         except (TypeError, ValueError):
-            logging.warning(f'unable to process redis key "wobbe_value_float" value must be a valid float')
+            logging.warning(f'unable to process redis key "cvm16:wobbe" value must be a valid float')
         # add API key
         data_d['api_key'] = API_KEY
         # do thingspeak request
@@ -44,7 +44,7 @@ def thingspeak_job():
                 raise ValueError
             logging.info(f'successful data update to entry ID: {entry_id}')
         except ValueError:
-            logging.warning(f'web server refused to update data')
+            logging.warning(f'unable to update data')
     except redis.RedisError as e:
         logging.error(f'redis error occur: {e!r}')
     except urllib.error.URLError as e:
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     logging.info('export-thingspeak-app started')
 
     # init redis DB
-    red = redis.StrictRedis()
+    rdb = redis.StrictRedis()
 
     # schedule config
     schedule.every(2).minutes.do(thingspeak_job)
