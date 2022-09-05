@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Load an image from wikimedia and calculate its average and dominant color.
 Display them on colored boxes in the upper left corner.
 """
