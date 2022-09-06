@@ -22,7 +22,7 @@ web_pil_img = web_pil_img.convert('RGB')
 web_arr_img = np.array(web_pil_img)
 
 # compute average color of image
-avg_r, avg_g, avg_b = map(round, np.mean(web_arr_img, axis=(0, 1)))
+avg_r, avg_g, avg_b = [int(round(x)) for x in np.mean(web_arr_img, axis=(0, 1))]
 dom_r, dom_g, dom_b = web_pil_img.resize((1, 1), resample=0).getpixel((0, 0))
 
 # format and print RGB color string
