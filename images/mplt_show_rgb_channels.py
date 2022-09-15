@@ -9,7 +9,7 @@ import numpy as np
 
 
 # some const
-IMG_URL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Philips_PM5544.svg/1024px-Philips_PM5544.svg.png'
+IMG_URL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/HueScale.svg/1024px-HueScale.svg.png'
 
 # load image
 img = Image.open(urlopen(IMG_URL))
