@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Camera server</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <link rel="stylesheet" href="static/css/bootstrap.min.css">
+  <style type="text/css">body { background: gray !important; }</style>
+  <script type="text/javascript" src="static/js/jquery.min.js"></script>
+  <script type="text/javascript">
+  function call_action(id) {
+    $.ajax({
+      type: "GET",
+      url: "/action/"+id,
+      error:function(msg){
+        //alert("Error on ajax request");
+      },
+      success:function(data){
+        //alert("Ajax request success");
+      }
+    });
+  }
+  </script>
+</head>
+<body>
+<div class="center">
+  <div class="col-md-3">
+    <div class="img-thumbnail">
+      <img src="/stream.jpg" class="figure-img img-fluid rounded">
+      <div class="caption">
+        <h4>Stream cam #0</h4>
+        <p>Comment for this stream.</p>
+        <input type="button" class="btn btn-success" onclick="call_action('1');" value="Do thing 1" />
+        <input type="button" class="btn btn-success" onclick="call_action('2');" value="Do thing 2" />
+        <input type="button" class="btn btn-success" onclick="call_action('3');" value="Do thing 3" />
+        <input type="button" class="btn btn-success" onclick="call_action('4');" value="Do thing 4" />
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
