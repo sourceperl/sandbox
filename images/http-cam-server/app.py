@@ -16,6 +16,7 @@ import socket
 from threading import Thread, Lock
 import time
 from typing import Any
+from urllib.parse import urlparse, parse_qs
 import cv2
 from PIL import Image
 
@@ -65,9 +66,13 @@ class HttpSrv:
             """Process HTTP GET request."""
             # catch socket errors
             try:
+                # decode real path (without args) and optionals args
+                p_result = urlparse(self.path)
+                path = p_result.path
+                args_d = parse_qs(p_result.query)
                 # process every HTTP GET endpoints
                 # endpoint: index.html (default one)
-                if self.path == '/' or self.path == '/index.html':
+                if path == '/' or path == '/index.html':
                     # headers
                     self.send_response(200)
                     self.send_header('content-type', 'text/html; charset=utf-8')
@@ -76,9 +81,9 @@ class HttpSrv:
                     with open(f'index.html', 'rb') as f:
                         self.wfile.write(f.read())
                 # endpoint: static directory
-                elif self.path.startswith('/static/'):
+                elif path.startswith('/static/'):
                     try:
-                        static_path = self.path[len('/static/'):]
+                        static_path = path[len('/static/'):]
                         with open(f'static/{static_path}', 'rb') as f:
                             data = f.read()
                         self.send_response(200)
@@ -93,7 +98,7 @@ class HttpSrv:
                         self.end_headers()
                         self.wfile.write(b'no permission')
                 # endpoint: static JPEG image
-                elif self.path == '/image.jpg':
+                elif path == '/image.jpg':
                     # headers
                     self.send_response(200)
                     self.send_header('cache-control', 'no-cache')
@@ -102,7 +107,7 @@ class HttpSrv:
                     # body
                     self.wfile.write(Shares.cam_img.to_jpeg())
                 # endpoint: MJPEG stream
-                elif self.path == '/stream.jpg':
+                elif path == '/stream.jpg':
                     # produce MJPEG stream
                     self.send_response(200)
                     self.send_header('Content-type', 'multipart/x-mixed-replace; boundary=--new_frame')
@@ -120,14 +125,37 @@ class HttpSrv:
                         self.wfile.write(frame_jpg)
                         time.sleep(0.05)
                 # endpoint: action
-                elif self.path == '/action/1':
-                    # headers
-                    self.send_response(200)
-                    self.end_headers()
-                    # body
-                    self.wfile.write(b'ok')
+                elif path == '/action':
                     # call action
-                    print('run action 1')
+                    try:
+                        try:
+                            action_id = args_d['id'][0]
+                        except KeyError:
+                            raise RuntimeError('no mandatory "id" field')
+                        # call know actions
+                        if action_id == 'left':
+                            print('left')
+                        elif action_id == 'up':
+                            print('up')
+                        elif action_id == 'down':
+                            print('down')
+                        elif action_id == 'right':
+                            print('right')
+                        else:
+                            raise RuntimeError('this action id is invalid')
+                        # HTTP: report success
+                        # headers
+                        self.send_response(200)
+                        self.end_headers()
+                        # body
+                        self.wfile.write(b'ok')
+                    except RuntimeError as e:
+                        # HTTP: report error
+                        # headers
+                        self.send_response(500)
+                        self.end_headers()
+                        # body
+                        self.wfile.write(f'{e}'.encode())
                 # on other path, nothing for you here
                 else:
                     # return HTTP 404 page not found

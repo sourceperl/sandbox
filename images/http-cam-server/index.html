@@ -7,10 +7,10 @@
   <style type="text/css">body { background: gray !important; }</style>
   <script type="text/javascript" src="static/js/jquery.min.js"></script>
   <script type="text/javascript">
-  function call_action(id) {
+  function call_action(action_id) {
     $.ajax({
       type: "GET",
-      url: "/action/"+id,
+      url: "/action?id="+action_id,
       error:function(msg){
         //alert("Error on ajax request");
       },
@@ -26,13 +26,13 @@
   <div class="col-md-3">
     <div class="img-thumbnail">
       <img src="/stream.jpg" class="figure-img img-fluid rounded">
-      <div class="caption">
+      <div class="caption" style="font-size:24px">
         <h4>Stream cam #0</h4>
         <p>Comment for this stream.</p>
-        <input type="button" class="btn btn-success" onclick="call_action('1');" value="Do thing 1" />
-        <input type="button" class="btn btn-success" onclick="call_action('2');" value="Do thing 2" />
-        <input type="button" class="btn btn-success" onclick="call_action('3');" value="Do thing 3" />
-        <input type="button" class="btn btn-success" onclick="call_action('4');" value="Do thing 4" />
+        <input type="button" class="btn btn-success" onclick="call_action('left');" value="◄" />
+        <input type="button" class="btn btn-success" onclick="call_action('up');" value="▲" />
+        <input type="button" class="btn btn-success" onclick="call_action('down');" value="▼" />
+        <input type="button" class="btn btn-success" onclick="call_action('right');" value="►" />
       </div>
     </div>
   </div>
