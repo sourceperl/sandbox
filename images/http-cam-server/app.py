@@ -19,6 +19,7 @@ from typing import Any
 from urllib.parse import urlparse, parse_qs
 import cv2
 from PIL import Image
+import pantilthat
 
 
 # some class
@@ -134,13 +135,13 @@ class HttpSrv:
                             raise RuntimeError('no mandatory "id" field')
                         # call know actions
                         if action_id == 'left':
-                            print('left')
+                            pantilthat.pan(pantilthat.get_pan() + 1)
                         elif action_id == 'up':
-                            print('up')
+                            pantilthat.tilt(pantilthat.get_tilt() - 1)
                         elif action_id == 'down':
-                            print('down')
+                            pantilthat.tilt(pantilthat.get_tilt() + 1)
                         elif action_id == 'right':
-                            print('right')
+                            pantilthat.pan(pantilthat.get_pan() - 1)
                         else:
                             raise RuntimeError('this action id is invalid')
                         # HTTP: report success
@@ -220,7 +221,7 @@ if __name__ == '__main__':
         if not read_ok:
             break
         # rotate of 180 degree and convert color to RGB
-        # cam_img = cv2.rotate(cam_img, cv2.ROTATE_180)
+        cam_img = cv2.rotate(cam_img, cv2.ROTATE_180)
         rgb_img = cv2.cvtColor(cam_img, cv2.COLOR_BGR2RGB)
         Shares.cam_img.from_array(rgb_img, mode='RGB')
         time.sleep(0.5)
