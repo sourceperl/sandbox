@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Basic request to ecogas API endpoint from ODRE platform.
+"""Basic request to ecogaz API endpoint from ODRE platform.
 more at https://myecogaz.com/
 """
 
