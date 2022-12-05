@@ -22,26 +22,35 @@ def is_subsonic(p_up_bara: float, p_down_bara: float) -> bool:
     return p_down_bara > p_up_bara / 2
 
 
-def valve_flow(cv: float, p_up_bara: float, p_down_bara: float, t_deg_c: float = 6.0, sg: float = 0.554) -> float:
+def valve_flow(cv: float, p1_bara: float, p2_bara: float, t_deg_c: float = 6.0, sg: float = 0.554) -> float:
     """Compute flow rate (nm3/h) in a valve from it's Cv"""
+    # check args value
+    if p1_bara < 0.00:
+        raise ValueError('arg p1_bara must be positive')
+    if p2_bara < 0.00:
+        raise ValueError('arg p2_bara must be positive')
+    # formats args for calculation
     t_k = celsius_to_kelvin(t_deg_c)
-    dp_bar = p_up_bara - p_down_bara
+    sign = 1 if p1_bara - p2_bara >= 0 else -1
+    p_up = max(p1_bara, p2_bara)
+    p_down = min(p1_bara, p2_bara)
+    dp = p_up - p_down
     # circulation below or over critical point
-    if is_subsonic(p_up_bara, p_down_bara):
-        return 417 * cv * p_up_bara * (1 - ((2 * dp_bar) / (3 * p_up_bara))) * \
-               math.sqrt(dp_bar / (p_up_bara * sg * t_k))
+    if is_subsonic(p_up, p_down):
+        return sign * 417 * cv * p_up * (1 - ((2 * dp) / (3 * p_up))) * math.sqrt(dp / (p_up * sg * t_k))
     else:
-        return 0.471 * 417 * cv * p_up_bara * math.sqrt(1 / (sg * t_k))
+        return sign * 0.471 * 417 * cv * p_up * math.sqrt(1 / (sg * t_k))
 
 
 def valve_cv(q_nm3_h: float, p_up_bara: float, p_down_bara: float, t_deg_c: float = 6.0, sg: float = 0.554) -> float:
     """Compute Cv of a valve from its flow rate (nm3/h)"""
+    # formats args for calculation
     t_k = celsius_to_kelvin(t_deg_c)
-    dp_bar = p_up_bara - p_down_bara
+    dp = p_up_bara - p_down_bara
     # circulation below or over critical point
     if is_subsonic(p_up_bara, p_down_bara):
-        return q_nm3_h / (417 * p_up_bara * (1 - ((2 * dp_bar) / (3 * p_up_bara))) *
-                          math.sqrt(dp_bar / (p_up_bara * sg * t_k)))
+        denom = 417 * p_up_bara * (1 - ((2 * dp) / (3 * p_up_bara))) * math.sqrt(dp / (p_up_bara * sg * t_k))
+        return q_nm3_h / denom
     else:
         return q_nm3_h / (0.471 * 417 * p_up_bara * math.sqrt(1 / (sg * t_k)))
 
@@ -58,7 +67,7 @@ if __name__ == '__main__':
             dp = (float(row['P amont']) / 10) - (float(row['P aval']) / 10)
             p_amt = float(row['P amont']) / 10
             p_avl = float(row['P aval']) / 10
-            qt = valve_flow(cv=48 * pos / 100, p_up_bara=p_amt, p_down_bara=p_avl)
+            qt = valve_flow(cv=48 * pos / 100, p1_bara=p_amt, p2_bara=p_avl)
             qt_l.append(qt)
 
     # plot it
