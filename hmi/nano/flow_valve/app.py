@@ -105,20 +105,23 @@ class HmiApp(tk.Tk):
         self.after(ms=500, func=self.txt_update_loop)
 
     def csv_export_loop(self):
-        with open('export.csv', 'a', newline='') as csv_file:
-            # init CSV writer
-            fields_l = ['datetime', 'p_amont', 'p_aval', 'position_vl', 'q_vl']
-            csv_w = csv.DictWriter(csv_file, extrasaction='ignore', dialect='excel-fr',
-                                   fieldnames=fields_l)
-            # add headers for a new file
-            if csv_file.tell() == 0:
-                csv_w.writeheader()
-            # add current data items to the CSV
-            csv_w.writerow({'datetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                            'p_amont': round(Share.p_amont_vl.val, 2),
-                            'p_aval': round(Share.p_aval_vl.val, 2),
-                            'position_vl': round(Share.pos_vl.val, 2),
-                            'q_vl': round(Share.q_vl.val)})
+        try:
+            with open('export.csv', 'a', newline='') as csv_file:
+                # init CSV writer
+                fields_l = ['datetime', 'p_amont', 'p_aval', 'position_vl', 'q_vl']
+                csv_w = csv.DictWriter(csv_file, extrasaction='ignore', dialect='excel-fr',
+                                       fieldnames=fields_l)
+                # add headers for a new file
+                if csv_file.tell() == 0:
+                    csv_w.writeheader()
+                # add current data items to the CSV
+                csv_w.writerow({'datetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'p_amont': round(Share.p_amont_vl.val, 2),
+                                'p_aval': round(Share.p_aval_vl.val, 2),
+                                'position_vl': round(Share.pos_vl.val, 2),
+                                'q_vl': round(Share.q_vl.val)})
+        except PermissionError:
+            pass
         # refresh csv every 10s
         self.after(ms=10_000, func=self.csv_export_loop)
 
