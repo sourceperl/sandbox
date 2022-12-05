@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import csv
+from datetime import datetime
 from os import chdir
 from os.path import abspath, dirname
 import time
@@ -12,6 +14,10 @@ import tkinter as tk
 
 
 # some class
+class ExcelFr(csv.excel):
+    delimiter = ';'
+
+
 class DataItem:
     def __init__(self, var: Any, is_ok: bool = False) -> None:
         self.val = var
@@ -34,7 +40,8 @@ class Share:
         """Modbus polling thread"""
         # init modbus client
         fmc = FloatModbusClient(host='localhost', port=502)
-        # initialization of the polynomial with VL Oppy coefs
+        # initialization of the polynomial to get Cv for a valve position (non-linear device)
+        # coefs src: VL Oppy
         cv_poly = np.poly1d([-1.75115535e-10,  6.23498970e-08, -8.64511406e-06,  5.65364659e-04,
                              -1.61157646e-02,  1.79337632e-01,  7.87619448e-01, -3.60037881e-03])
         # polling loop
@@ -47,13 +54,14 @@ class Share:
                     cls.p_amont_vl.set(read_flt_l[0])
                     cls.p_aval_vl.set(read_flt_l[1])
                     cls.pos_vl.set(read_flt_l[2])
+                    try:
+                        cls.q_vl.set(valve_flow(abs(cv_poly(cls.pos_vl.val)), cls.p_amont_vl.val, cls.p_aval_vl.val))
+                    except ValueError:
+                        cls.q_vl.is_ok = False
                 else:
                     cls.p_amont_vl.is_ok = False
                     cls.p_aval_vl.is_ok = False
                     cls.pos_vl.is_ok = False
-                try:
-                    cls.q_vl.set(valve_flow(cv_poly(cls.pos_vl.val), cls.p_amont_vl.val, cls.p_aval_vl.val))
-                except ValueError:
                     cls.q_vl.is_ok = False
             # 1s before next polling
             time.sleep(1.0)
@@ -77,10 +85,10 @@ class HmiApp(tk.Tk):
         self.avl_txt = self.cvs.create_text(227, 340, font=('Helvetica', 36))
         self.pos_txt = self.cvs.create_text(480, 530, font=('Helvetica', 36))
         self.qvl_txt = self.cvs.create_text(480, 660, font=('Helvetica', 36))
-        # start modbus polling thread
-        threading.Thread(target=Share.mbus_poll_thread, daemon=True).start()
-        # init update loop
-        self.txt_update_loop()
+        # start widget update loop
+        self.after(ms=500, func=self.txt_update_loop)
+        # start csv export loop
+        self.after(ms=2000, func=self.csv_export_loop)
 
     def txt_update_loop(self):
         # define widget update list
@@ -93,13 +101,35 @@ class HmiApp(tk.Tk):
             for txt_wdg, txt_fmt, d_item in widgets_l:
                 self.cvs.itemconfig(txt_wdg, text=txt_fmt % d_item.val)
                 self.cvs.itemconfig(txt_wdg, fill='black' if d_item.is_ok else 'red')
-        # refresh txt in 500 ms
+        # refresh txt widgets in 500 ms
         self.after(ms=500, func=self.txt_update_loop)
+
+    def csv_export_loop(self):
+        with open('export.csv', 'a', newline='') as csv_file:
+            # init CSV writer
+            fields_l = ['datetime', 'p_amont', 'p_aval', 'position_vl', 'q_vl']
+            csv_w = csv.DictWriter(csv_file, extrasaction='ignore', dialect='excel-fr',
+                                   fieldnames=fields_l)
+            # add headers for a new file
+            if csv_file.tell() == 0:
+                csv_w.writeheader()
+            # add current data items to the CSV
+            csv_w.writerow({'datetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            'p_amont': round(Share.p_amont_vl.val, 2),
+                            'p_aval': round(Share.p_aval_vl.val, 2),
+                            'position_vl': round(Share.pos_vl.val, 2),
+                            'q_vl': round(Share.q_vl.val)})
+        # refresh csv every 10s
+        self.after(ms=10_000, func=self.csv_export_loop)
 
 
 if __name__ == '__main__':
+    # add ExcelFr dialect to csv
+    csv.register_dialect('excel-fr', ExcelFr())
     # set current directory to this place
     chdir(dirname(abspath(__file__)))
+    # start modbus polling thread
+    threading.Thread(target=Share.mbus_poll_thread, daemon=True).start()
     # main Tk App
     app = HmiApp()
     app.mainloop()
