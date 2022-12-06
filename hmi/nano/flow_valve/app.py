@@ -40,7 +40,7 @@ class Share:
     def mbus_poll_thread(cls):
         """Modbus polling thread"""
         # init modbus client
-        fmc = FloatModbusClient(host='localhost', port=502)
+        fmc = FloatModbusClient(host='localhost', port=502, debug=False)
         # initialization of the polynomial to get Cv for a valve position (non-linear device)
         # coefs src: VL Oppy
         cv_poly = np.poly1d([-1.75115535e-10,  6.23498970e-08, -8.64511406e-06,  5.65364659e-04,
@@ -133,7 +133,7 @@ class TrendPavalFrame(tk.Frame):
             self.plt.clear()
             self.plt.set_ylabel('bars')
             with Share.lock:
-                self.plt.plot(Share.p_amont_vl_stack, 'b-')
+                self.plt.plot(Share.p_aval_vl_stack, 'b-')
 
 
 class TabSyno(tk.Frame):
@@ -201,6 +201,10 @@ class TabGraph(tk.Frame):
         self.fig = Figure(figsize=(self.WIDTH/self.DPI, self.HEIGHT/self.DPI), dpi=self.DPI)
         self.plt_h = self.fig.add_subplot(211)
         self.plt_b = self.fig.add_subplot(212)
+        self.plt_h.set_title('Historique pressions')
+        self.plt_h.set_ylabel('bars')
+        self.plt_b.set_title('Historique position VL')
+        self.plt_b.set_ylabel('%')
         self.fig.set_tight_layout(True)
         # add animate graph widget to tk app
         graph = FigureCanvasTkAgg(self.fig, master=self)
@@ -244,7 +248,7 @@ class HmiApp(tk.Tk):
         self.bind('<F1>', lambda evt: self.note.select(self.tab_syno))
         self.bind('<F2>', lambda evt: self.note.select(self.tab_graph))
         # add an exit button
-        self.but_exit = tk.Button(self, text="Exit", command=lambda: self.destroy())
+        self.but_exit = tk.Button(self, text="Exit", padx=25, command=lambda: self.destroy())
         self.but_exit.pack(side=tk.RIGHT, padx=10, pady=5)
         # start csv export loop
         self.after(ms=2000, func=self.csv_export_loop)
