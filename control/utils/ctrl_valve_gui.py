@@ -61,8 +61,6 @@ class ControlValve:
         return valve_flow(cv=self.get_cv(position), p1_bara=p1_bara, p2_bara=p2_bara)
 
 
-
-
 class TabFlowRate(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         # heritage stuff
@@ -132,7 +130,8 @@ class TabFlowRate(tk.Frame):
             if form_invalid:
                 raise ValueError
             valve_cv = self.ctrl_valve.get_cv(self.var_pos.get())
-            valve_nm3 = self.ctrl_valve.get_nm3(self.var_pos.get(), p1_bara=self.var_p_up.get(), p2_bara=self.var_p_down.get())
+            valve_nm3 = self.ctrl_valve.get_nm3(
+                self.var_pos.get(), p1_bara=self.var_p_up.get(), p2_bara=self.var_p_down.get())
         except (tk.TclError, ValueError):
             self.lbl_valve_cv.config(text='Cv = nan')
             self.lbl_valve_flow.config(text='Débit VL = nan')
