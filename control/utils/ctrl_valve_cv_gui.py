@@ -357,8 +357,9 @@ class HmiApp(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
         # configure main window
-        self.wm_title('Calcul de débit VL')
+        self.wm_title('Calcul Cv vanne de régulation')
         self.geometry('600x400')
+        self.resizable(width=False, height=False)
         # build a notebook with tabs
         self.note = ttk.Notebook(self)
         self.tab_cv2flow = TabCv2Flow(self.note)
