@@ -10,10 +10,8 @@ from tkinter import ttk
 
 
 # some const
-VLD_POS2CV_COEFS = [-0.0036003788152204723, 0.7876194476782555, 0.17933763182740162, -0.016115764610012975,
-                    0.000565364659464521, -8.645114062180609e-06, 6.234989698919915e-08, -1.7511553470538277e-10]
-VLD_CV2POS_COEFS = [-1.135769891024835, 1.0378754868315558, -0.00957245905645907, 5.1323032719156225e-05,
-                    -1.5603059266853836e-07, 2.6947029054658973e-10, -2.462423535754232e-13, 9.23954848773309e-17]
+VL_POS_CV_MAP = [(0, 0), (4, 5), (10, 15), (16, 21), (20, 25), (30, 40), (40, 75), (50, 145), (53, 166), (60, 235),
+                 (70, 345), (80, 460), (90, 580), (100, 680)]
 
 
 # some functions
@@ -81,32 +79,31 @@ def tk_entry_anim(tk_entry: tk.Entry, valid: bool) -> None:
     tk_entry.config(bg='white' if valid else 'red')
 
 
+def vl_pos2cv(position: float) -> float:
+    origin_pos, origin_cv = VL_POS_CV_MAP[0]
+    for ref_pos, ref_cv in VL_POS_CV_MAP:
+        if position <= ref_pos:
+            res_cv = origin_cv
+            if ref_pos - origin_pos > 0.0:
+                res_cv += (ref_cv - origin_cv) * (position - origin_pos) / (ref_pos - origin_pos)
+            return res_cv
+        origin_pos, origin_cv = ref_pos, ref_cv
+    return origin_cv
+
+
+def vl_cv2pos(cv: float) -> float:
+    origin_pos, origin_cv = VL_POS_CV_MAP[0]
+    for ref_pos, ref_cv in VL_POS_CV_MAP:
+        if cv <= ref_cv:
+            res_pos = origin_pos
+            if ref_cv - origin_cv > 0:
+                res_pos += (ref_pos - origin_pos) * (cv - origin_cv) / (ref_cv - origin_cv)
+            return res_pos
+        origin_pos, origin_cv = ref_pos, ref_cv
+    return origin_pos
+
+
 # some class
-class ControlValve:
-    """A control valve model class."""
-
-    def __init__(self, pos2cv_coef_l: list = [], cv2pos_coef_l: list = []):
-        self.pos2cv_coef_l = pos2cv_coef_l
-        self.cv2pos_coef_l = cv2pos_coef_l
-
-    def pos2cv(self, position: float) -> int:
-        result = 0.0
-        for n, a in enumerate(self.pos2cv_coef_l):
-            result += a * position**n
-        return round(result)
-
-    def cv2pos(self, cv: int) -> float:
-        result = 0.0
-        for n, a in enumerate(self.cv2pos_coef_l):
-            result += a * cv**n
-        return round(result, 2)
-
-
-class Share:
-    # init control valve
-    ctrl_valve = ControlValve(pos2cv_coef_l=VLD_POS2CV_COEFS, cv2pos_coef_l=VLD_CV2POS_COEFS)
-
-
 class TabCv2Flow(tk.Frame):
     def __init__(self, parent, *args, **kwargs):
         # heritage stuff
@@ -253,12 +250,15 @@ class TabPos2Flow(tk.Frame):
         self.ent_pos = tk.Entry(self, textvariable=self.var_pos)
         self.ent_pos.pack(padx=10, pady=5)
         # separate form and results area
-        tk.Label(self).pack(pady=20)
+        tk.Label(self).pack(pady=10)
         # Cv and flow labels
         self.lbl_valve_cv = tk.Label(self)
         self.lbl_valve_cv.pack(padx=10, pady=5, anchor=tk.CENTER)
         self.lbl_valve_flow = tk.Label(self)
         self.lbl_valve_flow.pack(padx=10, pady=5, anchor=tk.CENTER)
+        txt = 'Utilise le tableau "VL_POS_CV_MAP" pour définir le profil position/Cv de la VL.'
+        self.lbl_comment = tk.Label(self, font=('', 10, 'italic'), text=txt)
+        self.lbl_comment.pack(padx=10, pady=5, anchor=tk.CENTER)
         # init form at startup
         self._valid_form()
 
@@ -278,7 +278,7 @@ class TabPos2Flow(tk.Frame):
         try:
             if form_invalid:
                 raise ValueError
-            valve_cv = Share.ctrl_valve.pos2cv(self.var_pos.get())
+            valve_cv = vl_pos2cv(self.var_pos.get())
             valve_nm3 = valve_flow(cv=valve_cv, p1_bara=self.var_p_up.get(), p2_bara=self.var_p_down.get())
         except (tk.TclError, ValueError):
             self.lbl_valve_cv.config(text='Cv = nan')
@@ -316,12 +316,15 @@ class TabFlow2Pos(tk.Frame):
         self.ent_flow = tk.Entry(self, textvariable=self.var_flow)
         self.ent_flow.pack(padx=10, pady=5)
         # separate form and results area
-        tk.Label(self).pack(pady=20)
+        tk.Label(self).pack(pady=10)
         # Cv and flow labels
         self.lbl_valve_cv = tk.Label(self)
         self.lbl_valve_cv.pack(padx=10, pady=5, anchor=tk.CENTER)
         self.lbl_valve_pos = tk.Label(self)
         self.lbl_valve_pos.pack(padx=10, pady=5, anchor=tk.CENTER)
+        txt = 'Utilise le tableau "VL_POS_CV_MAP" pour définir le profil position/Cv de la VL.'
+        self.lbl_comment = tk.Label(self, font=('', 10, 'italic'), text=txt)
+        self.lbl_comment.pack(padx=10, pady=5, anchor=tk.CENTER)
         # init form at startup
         self._valid_form()
 
@@ -342,7 +345,7 @@ class TabFlow2Pos(tk.Frame):
             if form_invalid:
                 raise ValueError
             cv = valve_cv(q_nm3=self.var_flow.get(), p1_bara=self.var_p_up.get(), p2_bara=self.var_p_down.get())
-            pos = max(Share.ctrl_valve.cv2pos(cv), 0)
+            pos = vl_cv2pos(cv)
         except (tk.TclError, ValueError):
             self.lbl_valve_cv.config(text='Cv = nan')
             self.lbl_valve_pos.config(text='Position = nan')
