@@ -50,15 +50,15 @@ class Sound:
         return int(duration / self.t_smp)
 
 
-# DTMF call 555-2358
+# DTMF call 555-2368
 sd = Sound()
 # sd.tones(440, 1.0)
 sd.pause()
-for digit in "555 2368":
+for digit in "555-2368":
     if digit.isalnum():
         sd.tones(DTMF[digit], 0.4)
         sd.pause(0.2)
     else:
         sd.pause(0.8)
 sd.play()
-# sd.to_wav("555-2358.wav")
+# sd.to_wav("555-2368.wav")
