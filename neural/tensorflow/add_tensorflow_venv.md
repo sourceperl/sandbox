@@ -22,4 +22,6 @@ pip install https://github.com/PINTO0309/Tensorflow-bin/releases/download/v2.9.0
 
 URL: https://teachablemachine.withgoogle.com/
 
-Use it with use_tm_model.py script.
+Use it with scripts:
+- "use_tm_model_img.py" for image source.
+- "use_tm_model_cam.py" for USB camera source.
