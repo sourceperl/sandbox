@@ -13,7 +13,7 @@ source venv/tflow-2.9.0/bin/activate
 ## Add packages to venv/tflow-2.9.0
 ```bash
 # add packages
-pip install Pillow numpy
+pip install Pillow numpy opencv-python
 # add tensorflow wheel
 pip install https://github.com/PINTO0309/Tensorflow-bin/releases/download/v2.9.0/tensorflow-2.9.0-cp39-none-linux_aarch64.whl
 ```
