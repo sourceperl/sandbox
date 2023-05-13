@@ -23,9 +23,15 @@ class MainApp(tk.Tk):
         tk.Tk.__init__(self, *args, **kwargs)
         # init redis client
         self.rc = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
-        # img container
-        self.lbl_img = tk.Label()
-        self.lbl_img.pack()
+        # add canvas
+        self.cvs = tk.Canvas(width=1280, height=720, bd=0)
+        self.cvs.pack()
+        # add mouse left click handler to canvas
+        self.cvs.bind('<Button-1>', self._cvs_left_click)
+        # add image to canvas
+        self.cvs_img = self.cvs.create_image(0, 0, anchor=tk.NW)
+        # mark an area on canvas
+        self.cvs.create_rectangle(70, 142, 230, 274, outline='red')
         # start auto-refresh
         self.update_img()
 
@@ -40,15 +46,18 @@ class MainApp(tk.Tk):
             pil_img = PIL.Image.open(io.BytesIO(raw_data))
             # force size to 1280x720
             pil_img.thumbnail([1280, 720])
-            # convert PIL image to Tk format
+            # convert PIL image to Tk format and load it
             tk_img = PIL.ImageTk.PhotoImage(pil_img)
-            self.lbl_img.configure(image=tk_img)
-            # don't remove: keep a ref to avoid del by garbage collect
-            self.lbl_img.tk_img = tk_img
+            self.cvs.itemconfig(self.cvs_img, image=tk_img)
+            # don't remove: keep a ref to avoid garbage collect deletion
+            self.cvs.tk_img = tk_img
         except Exception as err:
             print(err, file=sys.stderr)
         # redo after 2s
         self.after(2000, func=self.update_img)
+    
+    def _cvs_left_click(self, event):
+        print(f'Canvas coordinates: x={event.x}, y={event.y}')
 
 
 if __name__ == '__main__':
