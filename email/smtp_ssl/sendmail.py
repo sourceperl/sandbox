@@ -30,16 +30,15 @@ def is_html(text: str) -> bool:
 
 
 def send_mail(to_addrs: Union[str, Sequence[str]], subject: str = '', body: str = '',
-              atts: Sequence[FileAttachment] = None):
+              atts: Union[FileAttachment, Sequence[FileAttachment]] = None):
     """Send an email with SMTP SSL."""
     # params
-    addr_l = []
     if isinstance(to_addrs, str):
-        addr_l.append(to_addrs)
-    elif isinstance(to_addrs, (list, tuple)):
-        addr_l = list(to_addrs)
+        to_addrs = [to_addrs]
     if atts is None:
         atts = []
+    elif isinstance(atts, FileAttachment):
+        atts = [atts]
     # connect and login
     smtp = smtplib.SMTP_SSL(host='smtp.free.fr', port=465, timeout=30.0)
     smtp.login(SMTP_USER, SMTP_PASS)
@@ -47,7 +46,7 @@ def send_mail(to_addrs: Union[str, Sequence[str]], subject: str = '', body: str 
     msg = MIMEMultipart()
     msg['Subject'] = subject
     msg['From'] = SMTP_FROM
-    msg['To'] = ', '.join(addr_l)
+    msg['To'] = ', '.join(to_addrs)
     # add body (auto-detect html type)
     msg.attach(MIMEText(body, 'html' if is_html(body) else 'plain'))
     # add attachments
@@ -67,6 +66,6 @@ if __name__ == '__main__':
     # logging setup
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
     # email attachments
-    my_atts = (FileAttachment('readme.txt', b'my text'),)
+    my_atts = FileAttachment('readme.txt', b'file content')
     # send mail
     send_mail(to_addrs=SMTP_TO, subject='My file', body='See file attached.', atts=my_atts)
