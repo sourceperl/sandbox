@@ -1,0 +1,5 @@
+# ignore workbook files
+*.xlsx
+
+# ignore zip files
+*.zip
