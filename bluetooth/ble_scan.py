@@ -11,9 +11,9 @@ async def main():
     # show results
     for addr, (ble_device, adv_data) in devices_d.items():
         print('-'*120)
-        print(f'{addr=}')
-        print(f'{ble_device=}')
-        print(f'{adv_data=}')
+        print(f'addr={addr}')
+        print(f'ble_device={ble_device}')
+        print(f'adv_data={adv_data}')
 
 
 asyncio.run(main())
