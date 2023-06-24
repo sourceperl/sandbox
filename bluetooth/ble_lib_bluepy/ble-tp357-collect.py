@@ -41,5 +41,5 @@ if __name__ == '__main__':
         try:
             Scanner().withDelegate(ScanDelegate()).scan(timeout=None, passive=True)
         except Exception as e:
-            print(f'exception occur: {e}')
+            logging.error(f'exception occur: {e}')
             time.sleep(1.0)
