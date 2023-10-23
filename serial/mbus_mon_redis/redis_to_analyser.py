@@ -4,12 +4,12 @@
 
 import argparse
 import logging
+import os
 import struct
 import sys
 import time
 # sudo apt install python3-redis
 import redis
-
 
 # some consts
 # functions codes
@@ -26,7 +26,7 @@ ENCAPSULATED_INTERFACE_TRANSPORT = 0x2B
 
 
 # some functions
-def crc16(frame: bytes):
+def crc16(frame: bytes) -> int:
     """Compute CRC16.
 
     :param frame: frame
@@ -35,8 +35,7 @@ def crc16(frame: bytes):
     :rtype: int
     """
     crc = 0xFFFF
-    for item in frame:
-        next_byte = item
+    for next_byte in frame:
         crc ^= next_byte
         for _ in range(8):
             lsb = crc & 1
@@ -47,12 +46,6 @@ def crc16(frame: bytes):
 
 
 # some class
-class FrameType:
-    UNKNOWN = 0
-    REQUEST = 1
-    RESPONSE = 2
-
-
 class ModbusRTUFrame:
     """ Modbus RTU frame container class. """
 
@@ -62,24 +55,24 @@ class ModbusRTUFrame:
         # flags
         self.is_request = is_request
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.raw)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.raw)
 
     @property
-    def type_as_str(self):
+    def is_request_as_str(self) -> str:
         """Return request/response type as string."""
         return 'request' if self.is_request else 'response'
 
     @property
-    def pdu(self):
+    def pdu(self) -> bytes:
         """Return PDU part of frame."""
         return self.raw[1:-2]
 
     @property
-    def slv_addr(self):
+    def slv_addr(self) -> int or None:
         """Return slave address part of frame."""
         try:
             return self.raw[0]
@@ -87,7 +80,7 @@ class ModbusRTUFrame:
             return
 
     @property
-    def func_code(self):
+    def func_code(self) -> int or None:
         """Return function code part of frame."""
         try:
             return self.raw[1]
@@ -95,7 +88,7 @@ class ModbusRTUFrame:
             return
 
     @property
-    def except_code(self):
+    def except_code(self) -> int or None:
         """Return except code part of frame."""
         try:
             return self.raw[2]
@@ -103,11 +96,10 @@ class ModbusRTUFrame:
             return
 
     @property
-    def is_valid(self):
+    def is_valid(self) -> bool:
         """Check if frame is valid.
 
         :return: True if frame is valid
-        :rtype: bool
         """
         return len(self.raw) > 4 and crc16(self.raw) == 0
 
@@ -124,80 +116,148 @@ class FrameAnalyzer:
         self.frm_now = ModbusRTUFrame()
         self.frm_last = ModbusRTUFrame()
         # private
-        # modbus default functions map
-        self._analyze_func_map = {READ_COILS: self._msg_read_bits,
-                                  READ_DISCRETE_INPUTS: self._msg_read_bits,
-                                  READ_HOLDING_REGISTERS: self._msg_read_words,
-                                  READ_INPUT_REGISTERS: self._msg_read_words, }
-        # WRITE_SINGLE_COIL: self._write_single_coil,
-        # WRITE_SINGLE_REGISTER: self._write_single_register,
-        # WRITE_MULTIPLE_COILS: self._write_multiple_coils,
-        # WRITE_MULTIPLE_REGISTERS: self._write_multiple_registers,
-        # WRITE_READ_MULTIPLE_REGISTERS: self._write_read_multiple_registers,
-        # ENCAPSULATED_INTERFACE_TRANSPORT: self._encapsulated_interface_transport}
+        # modbus functions maps
+        self._func_methods = {READ_COILS: self._msg_read_bits,
+                              READ_DISCRETE_INPUTS: self._msg_read_bits,
+                              READ_HOLDING_REGISTERS: self._msg_read_words,
+                              READ_INPUT_REGISTERS: self._msg_read_words,
+                              WRITE_SINGLE_COIL: self._msg_write_single_coil,
+                              WRITE_SINGLE_REGISTER: self._msg_write_single_reg,
+                              WRITE_MULTIPLE_COILS: self._msg_write_multiple_coils,
+                              WRITE_MULTIPLE_REGISTERS: self._msg_write_multiple_registers}
+                            # WRITE_READ_MULTIPLE_REGISTERS: self._write_read_multiple_registers,
+                            # ENCAPSULATED_INTERFACE_TRANSPORT: self._encapsulated_interface_transport}
+        self._func_names = {READ_COILS: 'read coils (1)',
+                            READ_DISCRETE_INPUTS: 'read discrete inputs (2)',
+                            READ_HOLDING_REGISTERS: 'read holding registers (3)',
+                            READ_INPUT_REGISTERS: 'read input registers (4)',
+                            WRITE_SINGLE_COIL: 'write single coil (5)',
+                            WRITE_SINGLE_REGISTER: 'write single register (6)',
+                            WRITE_MULTIPLE_COILS: 'write multiple coils (15)',
+                            WRITE_MULTIPLE_REGISTERS: 'write multiple registers (16)'}
 
-    def _msg_crc_err(self):
+    def _msg_crc_err(self) -> str:
         return f"bad CRC (raw: {self.frm_now.raw.hex(':')})"
 
-    def _msg_except(self):
+    def _msg_except(self) -> str:
+        # override request or response flag
         # except frame is always a response
         self.frm_now.is_request = False
         # format analyze message
-        origin_func = self.frm_now.func_code - 0x80
-        return f'reponse is an exception (code 0x{self.frm_now.except_code:02x}) ' \
-               f'for function 0x{origin_func:02x} (slave 0x{self.frm_now.slv_addr:02x}'
+        return f'response: exception (code 0x{self.frm_now.except_code:02x})'
 
-    def _msg_func_unknown(self):
-        return f'unknown function 0x{self.frm_now.func_code:02x} (slave 0x{self.frm_now.slv_addr:02x})'
+    def _msg_func_unknown(self) -> str:
+        # format message
+        return f'{self.frm_now.is_request_as_str} unknown function 0x{self.frm_now.func_code:02x}'
 
-    def _msg_read_bits(self):
-        # request or response ?
-        # 8 bytes long frame -> request or response, other length -> response
-        if len(self.frm_now) == 8:
-            self.frm_now.is_request = not self.frm_last.is_request
-        else:
+    def _msg_read_bits(self) -> str:
+        # override request or response flag
+        # 8 bytes long frame -> request or response, other length -> always a response
+        if len(self.frm_now) != 8:
             self.frm_now.is_request = False
-        # format analyze message
-        f_name = 'read coils' if self.frm_now.func_code == READ_COILS else 'read discrete inputs'
-        return f'{self.frm_now.type_as_str} {f_name}'
+        # decode frame PDU
+        if self.frm_now.is_request:
+            # request
+            try:
+                bit_addr, bit_nb = struct.unpack('>HH', self.frm_now.pdu[1:])
+                msg_pdu = f'read {bit_nb} bit(s) at @ 0x{bit_addr:04x} ({bit_addr})'
+            except struct.error:
+                msg_pdu = 'bad PDU format'
+        else:
+            # response
+            try:
+                read_bytes, = struct.unpack('>B', self.frm_now.pdu[1:2])
+                bits_l = struct.unpack(f'>{read_bytes}B', self.frm_now.pdu[2:])
+                bits_str = '-'.join([f'0x{b:02x}' for b in bits_l])
+                msg_pdu = f'return {len(bits_l) * 8} bit(s) (read bytes={read_bytes}) {bits_str}'
+            except struct.error:
+                msg_pdu = 'bad PDU format'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
 
-    def _msg_read_words(self):
-        # request or response ?
+    def _msg_read_words(self) -> str:
+        # override request or response flag
         # 8 bytes long frame -> request, other length -> response
         self.frm_now.is_request = len(self.frm_now) == 8
         # decode frame PDU
         if self.frm_now.is_request:
             # request
             try:
-                reg_addr, reg_nb = struct.unpack('>hh', self.frm_now.pdu[1:])
-                msg_pdu = f'read {reg_nb} register(s) at @0x{reg_addr:04x} ({reg_addr})'
+                reg_addr, reg_nb = struct.unpack('>HH', self.frm_now.pdu[1:])
+                msg_pdu = f'read {reg_nb} register(s) at @ 0x{reg_addr:04x} ({reg_addr})'
             except struct.error:
-                msg_pdu = 'error during frame decoding'
+                msg_pdu = 'bad PDU format'
         else:
             # response
             try:
-                byte_nb = struct.unpack('B', self.frm_now.pdu[1:2])[0]
-                msg_pdu = f'return {byte_nb} byte(s)'
+                read_bytes, = struct.unpack('>B', self.frm_now.pdu[1:2])
+                regs_l = struct.unpack(f'>{read_bytes // 2}H', self.frm_now.pdu[2:])
+                regs_str = '-'.join([f'{r:d}' for r in regs_l])
+                msg_pdu = f'return {len(regs_l)} register(s) (read bytes={read_bytes}) {regs_str}'
             except struct.error:
-                msg_pdu = 'error during frame decoding'
-        # format analyze message
-        f_name = 'read holding registers' if self.frm_now.func_code == READ_HOLDING_REGISTERS else 'read inputs registers'
-        return f'{self.frm_now.type_as_str} "{f_name}": {msg_pdu}'
+                msg_pdu = 'bad PDU format'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
+
+    def _msg_write_single_coil(self) -> str:
+        # request and response
+        try:
+            bit_addr, bit_value, _ = struct.unpack('>HBB', self.frm_now.pdu[1:])
+            bit_value_str = '1' if bit_value == 0xFF else '0'
+            msg_pdu = f'write {bit_value_str} to coil at @ 0x{bit_addr:04x} ({bit_addr})'
+        except struct.error:
+            msg_pdu = 'bad PDU format'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
+
+    def _msg_write_single_reg(self) -> str:
+        # request and response
+        try:
+            reg_addr, reg_value = struct.unpack('>HH', self.frm_now.pdu[1:])
+            msg_pdu = f'write {reg_value} to register at @ 0x{reg_addr:04x} ({reg_addr})'
+        except struct.error:
+            msg_pdu = 'bad PDU format'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
+
+    def _msg_write_multiple_coils(self) -> str:
+        # override request or response flag
+        # 8 bytes long frame -> response, other length -> request
+        self.frm_now.is_request = len(self.frm_now) != 8
+        # decode frame PDU
+        msg_pdu = 'fix this'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
+
+    def _msg_write_multiple_registers(self) -> str:
+        msg_pdu = 'fix this'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
+
+    def func_name_by_id(self, func_id: int) -> str:
+        """ Translate function code to name or hex representation. """
+        if func_id >= 0x80:
+            func_id -= 0x80
+        return self._func_names.get(func_id, f'0x{func_id:02x}')
 
     def analyze(self, frame: bytes):
+        """ Process current frame and produce a message to stdout. """
         # check CRC
         self.frm_now = ModbusRTUFrame(frame)
-        crc_ok = self.frm_now.is_valid
-        # debug: log raw frame
-        crc_status = 'OK' if crc_ok else 'ERROR'
-        logger.debug(f'dump #{self.nb_frame:<6} CRC {crc_status:5} {frame.hex(":")}')
         # update frame counter
         self.nb_frame += 1
+        # debug: log raw frame
+        logger.debug(f'[{self.nb_frame:>6}] frame dump: {frame.hex(":")}')
         # msg header
-        msg = f'[slave @{self.frm_now.slv_addr}] '
+        f_name = self.func_name_by_id(self.frm_now.func_code)
+        msg = f'[{self.nb_frame:>6}] slave {self.frm_now.slv_addr} "{f_name}" '
         # analyze only valid frame
-        if crc_ok:
+        if self.frm_now.is_valid:
             self.nb_good_crc += 1
+            # fix default request/response flag (can be override in _msg_xxxx func methods)
+            slv_addr_chg = self.frm_now.slv_addr != self.frm_last.slv_addr
+            func_code_chg = self.frm_now.func_code != self.frm_last.func_code
+            self.frm_now.is_request = True if slv_addr_chg or func_code_chg else not self.frm_last.is_request
             # check exception status
             if self.frm_now.func_code >= 0x80:
                 # on except
@@ -205,7 +265,7 @@ class FrameAnalyzer:
             else:
                 # if no except, call the ad-hoc function, if none exists, send an "illegal function" exception
                 try:
-                    msg += self._analyze_func_map[self.frm_now.func_code]()
+                    msg += self._func_methods[self.frm_now.func_code]()
                 except KeyError:
                     msg += self._msg_func_unknown()
             # keep current frame (with good CRC) for next analyze
@@ -214,7 +274,7 @@ class FrameAnalyzer:
             # don't analyze frame with bad CRC
             self.nb_bad_crc += 1
             msg += self._msg_crc_err()
-        # show msg
+        # show message
         logging.info(msg)
 
 
@@ -228,11 +288,16 @@ if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout,
                         format='%(asctime)s %(levelname)-8s %(message)s',
                         level=logging.DEBUG if args.debug else logging.INFO)
+    # when stdout is piped to another process
+    if not sys.stdout.isatty():
+        # avoid "BrokenPipeError" catch by logging internal handleError
+        logging.raiseExceptions = False
     logger = logging.getLogger(__name__)
+    logger.addHandler(logging.StreamHandler(sys.stdout))
     # init frame analyser
     frame_analyzer = FrameAnalyzer()
     # startup message
-    logging.info(f'analyze modbus frames from "{args.pub_key}" redis channel')
+    logger.info(f'analyze modbus frames from "{args.pub_key}" redis channel')
     # redis DB loop (ensure retry on except)
     while True:
         try:
@@ -245,6 +310,13 @@ if __name__ == '__main__':
             for item in rps.listen():
                 if item.get('type') == 'message':
                     frame_analyzer.analyze(item.get('data', b''))
+                    # ensure "BrokenPipeError" is trig in this code block
+                    sys.stdout.flush()
+        except BrokenPipeError:
+            # avoid "BrokenPipeError" when connect stdout to a died process
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, sys.stdout.fileno())
+            exit(1)
         except redis.RedisError as e:
             logging.error(f'redis error occur: {e!r}')
             time.sleep(1.0)
