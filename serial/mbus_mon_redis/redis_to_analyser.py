@@ -12,7 +12,7 @@ import time
 import redis
 
 # some consts
-# functions codes
+# function codes
 READ_COILS = 0x01
 READ_DISCRETE_INPUTS = 0x02
 READ_HOLDING_REGISTERS = 0x03
@@ -23,6 +23,13 @@ WRITE_MULTIPLE_COILS = 0x0F
 WRITE_MULTIPLE_REGISTERS = 0x10
 WRITE_READ_MULTIPLE_REGISTERS = 0x17
 ENCAPSULATED_INTERFACE_TRANSPORT = 0x2B
+# custom function codes
+GET_ALL_HOURLY_STATION_DATA = 0x64
+GET_ALL_DAILY_STATION_DATA = 0x65
+GET_ALL_HOURLY_LINE_DATA = 0x66
+GET_ALL_DAILY_LINE_DATA = 0x67
+GET_ALL_GAS_AUX_HOURLY_STATION_DATA = 0x68
+GET_DETAILED_HOURLY_STATION_DATA = 0x69
 
 
 # some functions
@@ -124,9 +131,8 @@ class FrameAnalyzer:
                               WRITE_SINGLE_COIL: self._msg_write_single_coil,
                               WRITE_SINGLE_REGISTER: self._msg_write_single_reg,
                               WRITE_MULTIPLE_COILS: self._msg_write_multiple_coils,
-                              WRITE_MULTIPLE_REGISTERS: self._msg_write_multiple_registers}
-                            # WRITE_READ_MULTIPLE_REGISTERS: self._write_read_multiple_registers,
-                            # ENCAPSULATED_INTERFACE_TRANSPORT: self._encapsulated_interface_transport}
+                              WRITE_MULTIPLE_REGISTERS: self._msg_write_multiple_registers,
+                              GET_ALL_HOURLY_STATION_DATA: self._msg_get_all_hourly_data}
         self._func_names = {READ_COILS: 'read coils (1)',
                             READ_DISCRETE_INPUTS: 'read discrete inputs (2)',
                             READ_HOLDING_REGISTERS: 'read holding registers (3)',
@@ -134,7 +140,15 @@ class FrameAnalyzer:
                             WRITE_SINGLE_COIL: 'write single coil (5)',
                             WRITE_SINGLE_REGISTER: 'write single register (6)',
                             WRITE_MULTIPLE_COILS: 'write multiple coils (15)',
-                            WRITE_MULTIPLE_REGISTERS: 'write multiple registers (16)'}
+                            WRITE_MULTIPLE_REGISTERS: 'write multiple registers (16)',
+                            WRITE_READ_MULTIPLE_REGISTERS: 'write read multiple registers (23)',
+                            ENCAPSULATED_INTERFACE_TRANSPORT: 'encapsulated interface transport (43)',
+                            GET_ALL_HOURLY_STATION_DATA: 'get all hourly station data (100)',
+                            GET_ALL_DAILY_STATION_DATA: 'get all daily station data (101)',
+                            GET_ALL_HOURLY_LINE_DATA: 'get all hourly line data (102)',
+                            GET_ALL_DAILY_LINE_DATA: 'get all daily line data (103)',
+                            GET_ALL_GAS_AUX_HOURLY_STATION_DATA: 'get all gas auxiliary hourly station data (104)',
+                            GET_DETAILED_HOURLY_STATION_DATA: 'get detailed hourly station data (105)'}
 
     def _msg_crc_err(self) -> str:
         return f"bad CRC (raw: {self.frm_now.raw.hex(':')})"
@@ -148,7 +162,8 @@ class FrameAnalyzer:
 
     def _msg_func_unknown(self) -> str:
         # format message
-        return f'{self.frm_now.is_request_as_str} unknown function 0x{self.frm_now.func_code:02x}'
+        return (f'{self.frm_now.is_request_as_str} function not supported: '
+                f'"{self.func_name_by_id(self.frm_now.func_code)}"')
 
     def _msg_read_bits(self) -> str:
         # override request or response flag
@@ -167,9 +182,14 @@ class FrameAnalyzer:
             # response
             try:
                 read_bytes, = struct.unpack('>B', self.frm_now.pdu[1:2])
-                bits_l = struct.unpack(f'>{read_bytes}B', self.frm_now.pdu[2:])
-                bits_str = '-'.join([f'0x{b:02x}' for b in bits_l])
-                msg_pdu = f'return {len(bits_l) * 8} bit(s) (read bytes={read_bytes}) {bits_str}'
+                bytes_l = struct.unpack(f'>{read_bytes}B', self.frm_now.pdu[2:])
+                # format bytes_l as bits list str: "1, 0, 1, 0 ..."
+                bits_l = []
+                for byte_val in bytes_l:
+                    for n in range(8):
+                        bits_l.append('1' if (byte_val & (1 << n)) else '0')
+                bits_str = ', '.join(bits_l)
+                msg_pdu = f'return {len(bits_l)} bit(s) (read bytes={read_bytes}) data: [{bits_str}]'
             except struct.error:
                 msg_pdu = 'bad PDU format'
         # format message
@@ -183,8 +203,8 @@ class FrameAnalyzer:
         if self.frm_now.is_request:
             # request
             try:
-                reg_addr, reg_nb = struct.unpack('>HH', self.frm_now.pdu[1:])
-                msg_pdu = f'read {reg_nb} register(s) at @ 0x{reg_addr:04x} ({reg_addr})'
+                reg_addr, regs_nb = struct.unpack('>HH', self.frm_now.pdu[1:])
+                msg_pdu = f'read {regs_nb} register(s) at @ 0x{reg_addr:04x} ({reg_addr})'
             except struct.error:
                 msg_pdu = 'bad PDU format'
         else:
@@ -192,8 +212,8 @@ class FrameAnalyzer:
             try:
                 read_bytes, = struct.unpack('>B', self.frm_now.pdu[1:2])
                 regs_l = struct.unpack(f'>{read_bytes // 2}H', self.frm_now.pdu[2:])
-                regs_str = '-'.join([f'{r:d}' for r in regs_l])
-                msg_pdu = f'return {len(regs_l)} register(s) (read bytes={read_bytes}) {regs_str}'
+                regs_str = ', '.join([f'{r:d}' for r in regs_l])
+                msg_pdu = f'return {len(regs_l)} register(s) (read bytes={read_bytes}) data: [{regs_str}]'
             except struct.error:
                 msg_pdu = 'bad PDU format'
         # format message
@@ -205,6 +225,8 @@ class FrameAnalyzer:
             bit_addr, bit_value, _ = struct.unpack('>HBB', self.frm_now.pdu[1:])
             bit_value_str = '1' if bit_value == 0xFF else '0'
             msg_pdu = f'write {bit_value_str} to coil at @ 0x{bit_addr:04x} ({bit_addr})'
+            if not self.frm_now.is_request:
+                msg_pdu += ' OK'
         except struct.error:
             msg_pdu = 'bad PDU format'
         # format message
@@ -215,6 +237,8 @@ class FrameAnalyzer:
         try:
             reg_addr, reg_value = struct.unpack('>HH', self.frm_now.pdu[1:])
             msg_pdu = f'write {reg_value} to register at @ 0x{reg_addr:04x} ({reg_addr})'
+            if not self.frm_now.is_request:
+                msg_pdu += ' OK'
         except struct.error:
             msg_pdu = 'bad PDU format'
         # format message
@@ -225,12 +249,74 @@ class FrameAnalyzer:
         # 8 bytes long frame -> response, other length -> request
         self.frm_now.is_request = len(self.frm_now) != 8
         # decode frame PDU
-        msg_pdu = 'fix this'
+        if self.frm_now.is_request:
+            # request
+            try:
+                bit_addr, bits_nb, bytes_nb = struct.unpack('>HHb', self.frm_now.pdu[1:6])
+                bytes_l = struct.unpack(f'>{bytes_nb}B', self.frm_now.pdu[6:])
+                # format bytes_l as bits list str: "1, 0, 1, 0 ..."
+                bits_l = []
+                for byte_val in bytes_l:
+                    for n in range(8):
+                        bits_l.append('1' if (byte_val & (1 << n)) else '0')
+                bits_str = ', '.join(bits_l)
+                msg_pdu = f'write {bits_nb} bit(s) at @ 0x{bit_addr:04x} ({bit_addr}) data: [{bits_str}]'
+            except struct.error:
+                msg_pdu = 'bad PDU format'
+        else:
+            # response
+            try:
+                bit_addr, bits_nb = struct.unpack('>HH', self.frm_now.pdu[1:5])
+                msg_pdu = f'write {bits_nb} bit(s) at @ 0x{bit_addr:04x} ({bit_addr}) OK'
+            except struct.error:
+                msg_pdu = 'bad PDU format'
         # format message
         return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
 
     def _msg_write_multiple_registers(self) -> str:
-        msg_pdu = 'fix this'
+        # override request or response flag
+        # 8 bytes long frame -> response, other length -> request
+        self.frm_now.is_request = len(self.frm_now) != 8
+        # decode frame PDU
+        if self.frm_now.is_request:
+            # request
+            try:
+                reg_addr, regs_nb, bytes_nb = struct.unpack('>HHb', self.frm_now.pdu[1:6])
+                regs_l = struct.unpack(f'>{bytes_nb//2}H', self.frm_now.pdu[6:])
+                regs_str = ', '.join([str(b) for b in regs_l])
+                msg_pdu = f'write {regs_nb} register(s) at @ 0x{reg_addr:04x} ({reg_addr}) data: [{regs_str}]'
+            except struct.error:
+                msg_pdu = f'bad PDU format'
+        else:
+            # response
+            try:
+                reg_addr, regs_nb = struct.unpack('>HH', self.frm_now.pdu[1:5])
+                msg_pdu = f'write {regs_nb} register(s) at @ 0x{reg_addr:04x} ({reg_addr}) OK'
+            except struct.error:
+                msg_pdu = 'bad PDU format'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
+
+    def _msg_get_all_hourly_data(self) -> str:
+        # override request or response flag
+        # 8 bytes long frame -> request, other length -> response
+        self.frm_now.is_request = len(self.frm_now) == 8
+        # decode frame PDU
+        if self.frm_now.is_request:
+            # request
+            try:
+                hour_id, byte_qty = struct.unpack('>Ib', self.frm_now.pdu[1:6])
+                msg_pdu = f'read hourly data hour ID={hour_id} and byte qty={byte_qty}'
+            except struct.error:
+                msg_pdu = f'bad PDU format'
+        else:
+            # response
+            try:
+                msg_pdu = 'implement this'
+                #reg_addr, regs_nb = struct.unpack('>HH', self.frm_now.pdu[1:5])
+                #msg_pdu = f'write {regs_nb} register(s) at @ 0x{reg_addr:04x} ({reg_addr}) OK'
+            except struct.error:
+                msg_pdu = 'bad PDU format'
         # format message
         return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
 
@@ -275,7 +361,7 @@ class FrameAnalyzer:
             self.nb_bad_crc += 1
             msg += self._msg_crc_err()
         # show message
-        logging.info(msg)
+        logger.info(msg)
 
 
 if __name__ == '__main__':
@@ -293,11 +379,11 @@ if __name__ == '__main__':
         # avoid "BrokenPipeError" catch by logging internal handleError
         logging.raiseExceptions = False
     logger = logging.getLogger(__name__)
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    # logger.addHandler(logging.StreamHandler(sys.stdout))
     # init frame analyser
     frame_analyzer = FrameAnalyzer()
     # startup message
-    logger.info(f'analyze modbus frames from "{args.pub_key}" redis channel')
+    logger.debug(f'analyze modbus frames from "{args.pub_key}" redis channel')
     # redis DB loop (ensure retry on except)
     while True:
         try:
@@ -318,7 +404,7 @@ if __name__ == '__main__':
             os.dup2(devnull, sys.stdout.fileno())
             exit(1)
         except redis.RedisError as e:
-            logging.error(f'redis error occur: {e!r}')
+            logger.error(f'redis error occur: {e!r}')
             time.sleep(1.0)
         except KeyboardInterrupt:
             exit(0)
