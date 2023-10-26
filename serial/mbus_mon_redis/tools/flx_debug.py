@@ -102,8 +102,6 @@ class ModbusSerialWorker:
 
 
 if __name__ == '__main__':
-    # during dev: override args
-    sys.argv.append('mydevice')
     # parse args
     parser = argparse.ArgumentParser()
     parser.add_argument('device', type=str, help='serial device (like /dev/ttyUSB0)')
@@ -118,7 +116,7 @@ if __name__ == '__main__':
     try:
         # init serial port
         logger.info(f'start serial modbus simulator {args.device}')
-        serial_port = FakeSerial(port=args.device, baudrate=args.baudrate)
+        serial_port = Serial(port=args.device, baudrate=args.baudrate)
         # init serial worker
         serial_worker = ModbusSerialWorker(port=serial_port)
         serial_worker.loop()
