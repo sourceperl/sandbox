@@ -3,6 +3,7 @@
 """ Modbus frame analyzer. """
 
 import argparse
+from datetime import datetime, timedelta
 import logging
 import os
 import struct
@@ -30,6 +31,8 @@ GET_ALL_HOURLY_LINE_DATA = 0x66
 GET_ALL_DAILY_LINE_DATA = 0x67
 GET_ALL_GAS_AUX_HOURLY_STATION_DATA = 0x68
 GET_DETAILED_HOURLY_STATION_DATA = 0x69
+# misc
+FLX_ORIGIN_DT = datetime(year=1976, month=1, day=1)
 
 
 # some functions
@@ -132,7 +135,8 @@ class FrameAnalyzer:
                               WRITE_SINGLE_REGISTER: self._msg_write_single_reg,
                               WRITE_MULTIPLE_COILS: self._msg_write_multiple_coils,
                               WRITE_MULTIPLE_REGISTERS: self._msg_write_multiple_registers,
-                              GET_ALL_HOURLY_STATION_DATA: self._msg_get_all_hourly_data}
+                              GET_ALL_HOURLY_STATION_DATA: self._msg_get_all_hourly_data,
+                              GET_ALL_DAILY_STATION_DATA: self._msg_get_all_daily_data}
         self._func_names = {READ_COILS: 'read coils (1)',
                             READ_DISCRETE_INPUTS: 'read discrete inputs (2)',
                             READ_HOLDING_REGISTERS: 'read holding registers (3)',
@@ -143,12 +147,12 @@ class FrameAnalyzer:
                             WRITE_MULTIPLE_REGISTERS: 'write multiple registers (16)',
                             WRITE_READ_MULTIPLE_REGISTERS: 'write read multiple registers (23)',
                             ENCAPSULATED_INTERFACE_TRANSPORT: 'encapsulated interface transport (43)',
-                            GET_ALL_HOURLY_STATION_DATA: 'get all hourly station data (100)',
-                            GET_ALL_DAILY_STATION_DATA: 'get all daily station data (101)',
-                            GET_ALL_HOURLY_LINE_DATA: 'get all hourly line data (102)',
-                            GET_ALL_DAILY_LINE_DATA: 'get all daily line data (103)',
-                            GET_ALL_GAS_AUX_HOURLY_STATION_DATA: 'get all gas auxiliary hourly station data (104)',
-                            GET_DETAILED_HOURLY_STATION_DATA: 'get detailed hourly station data (105)'}
+                            GET_ALL_HOURLY_STATION_DATA: 'hourly station data (100)',
+                            GET_ALL_DAILY_STATION_DATA: 'daily station data (101)',
+                            GET_ALL_HOURLY_LINE_DATA: 'hourly line data (102)',
+                            GET_ALL_DAILY_LINE_DATA: 'daily line data (103)',
+                            GET_ALL_GAS_AUX_HOURLY_STATION_DATA: 'aux. hourly station data (104)',
+                            GET_DETAILED_HOURLY_STATION_DATA: 'detailed hourly station data (105)'}
 
     def _msg_crc_err(self) -> str:
         return f"bad CRC (raw: {self.frm_now.raw.hex(':')})"
@@ -299,23 +303,62 @@ class FrameAnalyzer:
 
     def _msg_get_all_hourly_data(self) -> str:
         # override request or response flag
-        # 8 bytes long frame -> request, other length -> response
-        self.frm_now.is_request = len(self.frm_now) == 8
+        # 9 bytes long frame -> request, other length -> response
+        self.frm_now.is_request = len(self.frm_now) == 9
         # decode frame PDU
         if self.frm_now.is_request:
             # request
             try:
-                hour_id, byte_qty = struct.unpack('>Ib', self.frm_now.pdu[1:6])
-                msg_pdu = f'read hourly data hour ID={hour_id} and byte qty={byte_qty}'
+                hour_id, _byte_qty = struct.unpack('>IB', self.frm_now.pdu[1:6])
+                hour_dt = FLX_ORIGIN_DT + timedelta(hours=hour_id)
+                msg_pdu = f"hourly data for {hour_dt.strftime('%d/%m/%Y %Hh')} (h_id={hour_id})"
             except struct.error:
                 msg_pdu = f'bad PDU format'
         else:
             # response
             try:
-                msg_pdu = 'implement this'
-                #reg_addr, regs_nb = struct.unpack('>HH', self.frm_now.pdu[1:5])
-                #msg_pdu = f'write {regs_nb} register(s) at @ 0x{reg_addr:04x} ({reg_addr}) OK'
+                tags_str = ''
+                _byte_qty = self.frm_now.pdu[2]
+                tags_block = self.frm_now.pdu[2:]
+                for i in range(0, len(tags_block), 10):
+                    tag_name, tag_value = struct.unpack('>6sf', tags_block[i:i+10])
+                    tag_name = tag_name.rstrip(b'\x00').decode().rstrip()
+                    if tag_name:
+                        tags_str += ', ' if tags_str else ''
+                        tags_str += f'{tag_name}={tag_value:.03f}'
+                msg_pdu = f'hourly data is {tags_str}'
+            except (struct.error, UnicodeDecodeError):
+                msg_pdu = 'bad PDU format'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
+
+    def _msg_get_all_daily_data(self) -> str:
+        # override request or response flag
+        # 9 bytes long frame -> request, other length -> response
+        self.frm_now.is_request = len(self.frm_now) == 9
+        # decode frame PDU
+        if self.frm_now.is_request:
+            # request
+            try:
+                day_id, _byte_qty = struct.unpack('>IB', self.frm_now.pdu[1:6])
+                day_dt = FLX_ORIGIN_DT + timedelta(days=day_id)
+                msg_pdu = f"daily data for {day_dt.strftime('%d/%m/%Y')} (d_id={day_id})"
             except struct.error:
+                msg_pdu = f'bad PDU format'
+        else:
+            # response
+            try:
+                tags_str = ''
+                _byte_qty = self.frm_now.pdu[2]
+                tags_block = self.frm_now.pdu[2:]
+                for i in range(0, len(tags_block), 10):
+                    tag_name, tag_value = struct.unpack('>6sf', tags_block[i:i+10])
+                    tag_name = tag_name.rstrip(b'\x00').decode().rstrip()
+                    if tag_name:
+                        tags_str += ', ' if tags_str else ''
+                        tags_str += f'{tag_name}={tag_value:.03f}'
+                msg_pdu = f'daily data is {tags_str}'
+            except (struct.error, UnicodeDecodeError):
                 msg_pdu = 'bad PDU format'
         # format message
         return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
@@ -339,6 +382,7 @@ class FrameAnalyzer:
         msg = f'[{self.nb_frame:>6}] slave {self.frm_now.slv_addr} "{f_name}" '
         # analyze only valid frame
         if self.frm_now.is_valid:
+            # update status
             self.nb_good_crc += 1
             # fix default request/response flag (can be override in _msg_xxxx func methods)
             slv_addr_chg = self.frm_now.slv_addr != self.frm_last.slv_addr
