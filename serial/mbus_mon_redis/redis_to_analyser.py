@@ -135,10 +135,12 @@ class FrameAnalyzer:
                               WRITE_SINGLE_REGISTER: self._msg_write_single_reg,
                               WRITE_MULTIPLE_COILS: self._msg_write_multiple_coils,
                               WRITE_MULTIPLE_REGISTERS: self._msg_write_multiple_registers,
-                              GET_ALL_HOURLY_STATION_DATA: self._msg_get_all_hourly_station_data,
-                              GET_ALL_DAILY_STATION_DATA: self._msg_get_all_daily_station_data,
-                              GET_ALL_HOURLY_LINE_DATA: self._msg_get_all_hourly_line_data,
-                              GET_ALL_DAILY_LINE_DATA: self._msg_get_all_daily_line_data}
+                              GET_ALL_HOURLY_STATION_DATA: self._msg_hourly_station_data,
+                              GET_ALL_DAILY_STATION_DATA: self._msg_daily_station_data,
+                              GET_ALL_HOURLY_LINE_DATA: self._msg_hourly_line_data,
+                              GET_ALL_DAILY_LINE_DATA: self._msg_daily_line_data,
+                              GET_ALL_GAS_AUX_HOURLY_STATION_DATA: self._msg_auxiliary_hourly_station_data,
+                              GET_DETAILED_HOURLY_STATION_DATA: self._msg_detailed_hourly_station_data}
         self._func_names = {READ_COILS: 'read coils (1)',
                             READ_DISCRETE_INPUTS: 'read discrete inputs (2)',
                             READ_HOLDING_REGISTERS: 'read holding registers (3)',
@@ -291,7 +293,7 @@ class FrameAnalyzer:
                 regs_str = ', '.join([str(b) for b in regs_l])
                 msg_pdu = f'write {regs_nb} register(s) at @ 0x{reg_addr:04x} ({reg_addr}) data: [{regs_str}]'
             except struct.error:
-                msg_pdu = f'bad PDU format'
+                msg_pdu = 'bad PDU format'
         else:
             # response
             try:
@@ -302,7 +304,7 @@ class FrameAnalyzer:
         # format message
         return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
 
-    def _msg_get_all_hourly_station_data(self) -> str:
+    def _msg_hourly_station_data(self) -> str:
         # override request or response flag
         # 9 bytes long frame -> request, other length -> response
         self.frm_now.is_request = len(self.frm_now) == 9
@@ -314,7 +316,7 @@ class FrameAnalyzer:
                 hour_dt = FLX_ORIGIN_DT + timedelta(hours=hour_id)
                 msg_pdu = f"hourly data from {hour_dt.strftime('%Hh %d/%m/%Y')} (h_id={hour_id}, b_qty={b_qty})"
             except (struct.error, OverflowError):
-                msg_pdu = f'bad PDU format'
+                msg_pdu = 'bad PDU format'
         else:
             # response
             try:
@@ -333,7 +335,7 @@ class FrameAnalyzer:
         # format message
         return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
 
-    def _msg_get_all_daily_station_data(self) -> str:
+    def _msg_daily_station_data(self) -> str:
         # override request or response flag
         # 9 bytes long frame -> request, other length -> response
         self.frm_now.is_request = len(self.frm_now) == 9
@@ -345,7 +347,7 @@ class FrameAnalyzer:
                 day_dt = FLX_ORIGIN_DT + timedelta(days=day_id)
                 msg_pdu = f"daily data from {day_dt.strftime('%d/%m/%Y')} (d_id={day_id}, b_qty={b_qty})"
             except (struct.error, OverflowError):
-                msg_pdu = f'bad PDU format'
+                msg_pdu = 'bad PDU format'
         else:
             # response
             try:
@@ -364,7 +366,7 @@ class FrameAnalyzer:
         # format message
         return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
 
-    def _msg_get_all_hourly_line_data(self) -> str:
+    def _msg_hourly_line_data(self) -> str:
         # override request or response flag
         # 10 bytes long frame -> request, other length -> response
         self.frm_now.is_request = len(self.frm_now) == 10
@@ -376,7 +378,7 @@ class FrameAnalyzer:
                 hour_dt = FLX_ORIGIN_DT + timedelta(hours=hour_id)
                 msg_pdu = f"hourly data for line {line_id} from {hour_dt.strftime('%Hh %d/%m/%Y')} (h_id={hour_id}, b_qty={b_qty})"
             except (struct.error, OverflowError):
-                msg_pdu = f'bad PDU format'
+                msg_pdu = 'bad PDU format'
         else:
             # response
             try:
@@ -395,7 +397,7 @@ class FrameAnalyzer:
         # format message
         return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
 
-    def _msg_get_all_daily_line_data(self) -> str:
+    def _msg_daily_line_data(self) -> str:
         # override request or response flag
         # 10 bytes long frame -> request, other length -> response
         self.frm_now.is_request = len(self.frm_now) == 10
@@ -407,7 +409,7 @@ class FrameAnalyzer:
                 day_dt = FLX_ORIGIN_DT + timedelta(days=day_id)
                 msg_pdu = f"daily data for line {line_id} from {day_dt.strftime('%d/%m/%Y')} (d_id={day_id}, b_qty={b_qty})"
             except (struct.error, OverflowError):
-                msg_pdu = f'bad PDU format'
+                msg_pdu = 'bad PDU format'
         else:
             # response
             try:
@@ -421,6 +423,68 @@ class FrameAnalyzer:
                         tags_str += ', ' if tags_str else ''
                         tags_str += f'{tag_name}={tag_value:.03f}'
                 msg_pdu = f'daily data is {tags_str} (b_qty={b_qty})'
+            except (struct.error, IndexError, UnicodeDecodeError):
+                msg_pdu = 'bad PDU format'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
+
+    def _msg_auxiliary_hourly_station_data(self) -> str:
+        # override request or response flag
+        # 9 bytes long frame -> request, other length -> response
+        self.frm_now.is_request = len(self.frm_now) == 9
+        # decode frame PDU
+        if self.frm_now.is_request:
+            # request
+            try:
+                hour_id, b_qty = struct.unpack('>IB', self.frm_now.pdu[1:6])
+                hour_dt = FLX_ORIGIN_DT + timedelta(hours=hour_id)
+                msg_pdu = f"hourly data from {hour_dt.strftime('%Hh %d/%m/%Y')} (h_id={hour_id}, b_qty={b_qty})"
+            except (struct.error, OverflowError):
+                msg_pdu = 'bad PDU format'
+        else:
+            # response
+            try:
+                tags_str = ''
+                b_qty = self.frm_now.pdu[2]
+                tags_block = self.frm_now.pdu[2:]
+                for i in range(0, len(tags_block), 10):
+                    tag_name, tag_value = struct.unpack('>6sf', tags_block[i:i+10])
+                    tag_name = tag_name.rstrip(b'\x00').decode().rstrip()
+                    if tag_name.isalnum():
+                        tags_str += ', ' if tags_str else ''
+                        tags_str += f'{tag_name}={tag_value:.03f}'
+                msg_pdu = f'hourly data is {tags_str}'
+            except (struct.error, IndexError, UnicodeDecodeError):
+                msg_pdu = 'bad PDU format'
+        # format message
+        return f'{self.frm_now.is_request_as_str}: {msg_pdu}'
+
+    def _msg_detailed_hourly_station_data(self) -> str:
+        # override request or response flag
+        # 9 bytes long frame -> request, other length -> response
+        self.frm_now.is_request = len(self.frm_now) == 9
+        # decode frame PDU
+        if self.frm_now.is_request:
+            # request
+            try:
+                hour_id, b_qty = struct.unpack('>IB', self.frm_now.pdu[1:6])
+                hour_dt = FLX_ORIGIN_DT + timedelta(hours=hour_id)
+                msg_pdu = f"hourly data from {hour_dt.strftime('%Hh %d/%m/%Y')} (h_id={hour_id}, b_qty={b_qty})"
+            except (struct.error, OverflowError):
+                msg_pdu = 'bad PDU format'
+        else:
+            # response
+            try:
+                tags_str = ''
+                b_qty = self.frm_now.pdu[2]
+                tags_block = self.frm_now.pdu[2:]
+                for i in range(0, len(tags_block), 10):
+                    tag_name, tag_value = struct.unpack('>6sf', tags_block[i:i+10])
+                    tag_name = tag_name.rstrip(b'\x00').decode().rstrip()
+                    if tag_name.isalnum():
+                        tags_str += ', ' if tags_str else ''
+                        tags_str += f'{tag_name}={tag_value:.03f}'
+                msg_pdu = f'hourly data is {tags_str}'
             except (struct.error, IndexError, UnicodeDecodeError):
                 msg_pdu = 'bad PDU format'
         # format message

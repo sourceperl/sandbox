@@ -69,9 +69,14 @@ class ModbusSerialWorker:
         self.aux_hourly_station_d = (('STHN', 0.0), ('STMHN', 0.0), ('H2SHN', 0.0), ('H2SMHN', 0.0), ('WDPHN', 0.0),
                                      ('WDPMHN', 0.0), ('HDPHN', 0.0), ('HDMHN', 0.0), ('O2HN', 0.0), ('O2MHN', 0.0),
                                      ('WMINHN', 0.0), ('WMAXHN', 0.0))
-        self.aux_hourly_station_d = (('STHN', 0.0), ('STMHN', 0.0), ('H2SHN', 0.0), ('H2SMHN', 0.0), ('WDPHN', 0.0),
-                                     ('WDPMHN', 0.0), ('HDPHN', 0.0), ('HDMHN', 0.0), ('O2HN', 0.0), ('O2MHN', 0.0),
-                                     ('WMINHN', 0.0), ('WMAXHN', 0.0))
+        self.det_hourly_station_d = (('VNFHN', 0.0), ('VNFAHN', 0.0), ('VNRHN', 0.0), ('VNRAHN', 0.0), ('EFHN', 0.0),
+                                     ('EFAHN', 0.0), ('ERHN', 0.0), ('ERAHN', 0.0))
+
+    def send_frame(self, frame: bytes):
+        # send over serial port
+        self.serial_port.write(frame)
+        # add silence to ensure end of frame detection
+        time.sleep(0.05)
 
     def flx_hourly_station_data(self):
         # format request frame
@@ -84,9 +89,7 @@ class ModbusSerialWorker:
         # add CRC
         request_frame += struct.pack('<H', crc16(request_frame))
         # send request
-        self.serial_port.write(request_frame)
-        # add delay between request/reponse
-        time.sleep(0.05)
+        self.send_frame(request_frame)
         # format response frame
         byte_qty = 0xf0
         # build response frame
@@ -100,9 +103,7 @@ class ModbusSerialWorker:
         # add CRC
         response_frame += struct.pack('<H', crc16(response_frame))
         # send response
-        self.serial_port.write(response_frame)
-        # add delay between request/reponse
-        time.sleep(0.05)
+        self.send_frame(response_frame)
 
     def flx_daily_station_data(self):
         # format request frame
@@ -115,9 +116,7 @@ class ModbusSerialWorker:
         # add CRC
         request_frame += struct.pack('<H', crc16(request_frame))
         # send request
-        self.serial_port.write(request_frame)
-        # add delay between request/reponse
-        time.sleep(0.05)
+        self.send_frame(request_frame)
         # format response frame
         byte_qty = 0xfd
         # build response frame
@@ -131,9 +130,7 @@ class ModbusSerialWorker:
         # add CRC
         response_frame += struct.pack('<H', crc16(response_frame))
         # send response
-        self.serial_port.write(response_frame)
-        # add delay between request/reponse
-        time.sleep(0.05)
+        self.send_frame(response_frame)
 
     def flx_hourly_line_data(self):
         # format request frame
@@ -147,9 +144,7 @@ class ModbusSerialWorker:
         # add CRC
         request_frame += struct.pack('<H', crc16(request_frame))
         # send request
-        self.serial_port.write(request_frame)
-        # add delay between request/reponse
-        time.sleep(0.05)
+        self.send_frame(request_frame)
         # format response frame
         byte_qty = 0x66
         # build response frame
@@ -163,9 +158,7 @@ class ModbusSerialWorker:
         # add CRC
         response_frame += struct.pack('<H', crc16(response_frame))
         # send response
-        self.serial_port.write(response_frame)
-        # add delay between request/reponse
-        time.sleep(0.05)
+        self.send_frame(response_frame)
 
     def flx_daily_line_data(self):
         # format request frame
@@ -179,9 +172,7 @@ class ModbusSerialWorker:
         # add CRC
         request_frame += struct.pack('<H', crc16(request_frame))
         # send request
-        self.serial_port.write(request_frame)
-        # add delay between request/reponse
-        time.sleep(0.05)
+        self.send_frame(request_frame)
         # format response frame
         byte_qty = 0x66
         # build response frame
@@ -195,17 +186,67 @@ class ModbusSerialWorker:
         # add CRC
         response_frame += struct.pack('<H', crc16(response_frame))
         # send response
-        self.serial_port.write(response_frame)
-        # add delay between request/reponse
-        time.sleep(0.05)
+        self.send_frame(response_frame)
+
+    def flx_auxiliary_hourly_station_data(self):
+        # format request frame
+        slave_addr = 7
+        func_code = 0x68
+        hour_dt = datetime(year=2023, month=10, day=25, hour=14)
+        hour_id = round((hour_dt - FLX_ORIGIN_DT).total_seconds()/3600)
+        byte_qty = 0xf0
+        request_frame = struct.pack('>BBIB', slave_addr, func_code, hour_id, byte_qty)
+        # add CRC
+        request_frame += struct.pack('<H', crc16(request_frame))
+        # send request
+        self.send_frame(request_frame)
+        # format response frame
+        byte_qty = 0xf0
+        # build response frame
+        # header
+        response_frame = struct.pack('>BBB', slave_addr, func_code, byte_qty)
+        # populate with tags and values
+        for tag_name, tag_value in self.aux_hourly_station_d:
+            response_frame += f'{tag_name:<6s}'.encode() + struct.pack('>f', tag_value)
+        # add 120 null bytes
+        response_frame += bytes(120)
+        # add CRC
+        response_frame += struct.pack('<H', crc16(response_frame))
+        # send response
+        self.send_frame(response_frame)
+
+    def flx_detailled_hourly_station_data(self):
+        # format request frame
+        slave_addr = 7
+        func_code = 0x69
+        hour_dt = datetime(year=2023, month=10, day=25, hour=14)
+        hour_id = round((hour_dt - FLX_ORIGIN_DT).total_seconds()/3600)
+        byte_qty = 0xf0
+        request_frame = struct.pack('>BBIB', slave_addr, func_code, hour_id, byte_qty)
+        # add CRC
+        request_frame += struct.pack('<H', crc16(request_frame))
+        # send request
+        self.send_frame(request_frame)
+        # format response frame
+        byte_qty = 0xf0
+        # build response frame
+        # header
+        response_frame = struct.pack('>BBB', slave_addr, func_code, byte_qty)
+        # populate with tags and values
+        for tag_name, tag_value in self.det_hourly_station_d:
+            response_frame += f'{tag_name:<6s}'.encode() + struct.pack('>f', tag_value)
+        # add 160 null bytes
+        response_frame += bytes(160)
+        # add CRC
+        response_frame += struct.pack('<H', crc16(response_frame))
+        # send response
+        self.send_frame(response_frame)
 
     def random_frame(self):
         # generate frame
         frame = os.urandom(randint(1, 255))
         # send it
-        self.serial_port.write(frame)
-        # ensure end of frame detection
-        time.sleep(.05)
+        self.send_frame(frame)
 
     def random_frame_with_crc(self):
         # generate frame
@@ -213,9 +254,7 @@ class ModbusSerialWorker:
         # add CRC
         frame += struct.pack('<H', crc16(frame))
         # send it
-        self.serial_port.write(frame)
-        # ensure end of frame detection
-        time.sleep(.05)
+        self.send_frame(frame)
 
     def loop(self):
         """ Serial worker main loop. """
@@ -223,7 +262,7 @@ class ModbusSerialWorker:
         while True:
             # random tests
             # self.random_frame()
-            # self.random_frame_with_crc()
+            self.random_frame_with_crc()
             # hourly station data
             self.flx_hourly_station_data()
             # daily station data
@@ -232,6 +271,10 @@ class ModbusSerialWorker:
             self.flx_hourly_line_data()
             # daily line data
             self.flx_daily_line_data()
+            # auxiliary hourly station data
+            self.flx_auxiliary_hourly_station_data()
+            # detailled hourly station data
+            self.flx_detailled_hourly_station_data()
 
 
 if __name__ == '__main__':
