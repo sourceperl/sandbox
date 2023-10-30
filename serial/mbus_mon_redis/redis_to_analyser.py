@@ -120,8 +120,6 @@ class FrameAnalyzer:
     def __init__(self):
         # public
         self.nb_frame = 0
-        self.nb_good_crc = 0
-        self.nb_bad_crc = 0
         # current and last frame
         self.frm_now = ModbusRTUFrame()
         self.frm_last = ModbusRTUFrame()
@@ -141,25 +139,25 @@ class FrameAnalyzer:
                               GET_ALL_DAILY_LINE_DATA: self._msg_daily_line_data,
                               GET_ALL_GAS_AUX_HOURLY_STATION_DATA: self._msg_auxiliary_hourly_station_data,
                               GET_DETAILED_HOURLY_STATION_DATA: self._msg_detailed_hourly_station_data}
-        self._func_names = {READ_COILS: 'read coils (1)',
-                            READ_DISCRETE_INPUTS: 'read discrete inputs (2)',
-                            READ_HOLDING_REGISTERS: 'read holding registers (3)',
-                            READ_INPUT_REGISTERS: 'read input registers (4)',
-                            WRITE_SINGLE_COIL: 'write single coil (5)',
-                            WRITE_SINGLE_REGISTER: 'write single register (6)',
-                            WRITE_MULTIPLE_COILS: 'write multiple coils (15)',
-                            WRITE_MULTIPLE_REGISTERS: 'write multiple registers (16)',
-                            WRITE_READ_MULTIPLE_REGISTERS: 'write read multiple registers (23)',
-                            ENCAPSULATED_INTERFACE_TRANSPORT: 'encapsulated interface transport (43)',
-                            GET_ALL_HOURLY_STATION_DATA: 'hourly station data (100)',
-                            GET_ALL_DAILY_STATION_DATA: 'daily station data (101)',
-                            GET_ALL_HOURLY_LINE_DATA: 'hourly line data (102)',
-                            GET_ALL_DAILY_LINE_DATA: 'daily line data (103)',
-                            GET_ALL_GAS_AUX_HOURLY_STATION_DATA: 'aux. hourly station data (104)',
-                            GET_DETAILED_HOURLY_STATION_DATA: 'detailed hourly station data (105)'}
+        self._func_names = {READ_COILS: 'read coils',
+                            READ_DISCRETE_INPUTS: 'read discrete inputs',
+                            READ_HOLDING_REGISTERS: 'read holding registers',
+                            READ_INPUT_REGISTERS: 'read input registers',
+                            WRITE_SINGLE_COIL: 'write single coil',
+                            WRITE_SINGLE_REGISTER: 'write single register',
+                            WRITE_MULTIPLE_COILS: 'write multiple coils',
+                            WRITE_MULTIPLE_REGISTERS: 'write multiple registers',
+                            WRITE_READ_MULTIPLE_REGISTERS: 'write read multiple registers',
+                            ENCAPSULATED_INTERFACE_TRANSPORT: 'encapsulated interface transport',
+                            GET_ALL_HOURLY_STATION_DATA: 'hourly station data',
+                            GET_ALL_DAILY_STATION_DATA: 'daily station data',
+                            GET_ALL_HOURLY_LINE_DATA: 'hourly line data',
+                            GET_ALL_DAILY_LINE_DATA: 'daily line data',
+                            GET_ALL_GAS_AUX_HOURLY_STATION_DATA: 'aux. hourly station data',
+                            GET_DETAILED_HOURLY_STATION_DATA: 'detailed hourly station data'}
 
-    def _msg_crc_err(self) -> str:
-        return f"bad CRC (raw: {self.frm_now.raw.hex(':')})"
+    def _msg_err(self) -> str:
+        return f"bad CRC or too short frame (raw: {self.frm_now.raw.hex(':')})"
 
     def _msg_except(self) -> str:
         # override request or response flag
@@ -170,7 +168,7 @@ class FrameAnalyzer:
 
     def _msg_func_unknown(self) -> str:
         # format message
-        return f'{self.frm_now.is_request_as_str} function not supported'
+        return f'{self.frm_now.is_request_as_str}: function not supported'
 
     def _msg_read_bits(self) -> str:
         # override request or response flag
@@ -494,7 +492,10 @@ class FrameAnalyzer:
         """ Translate function code to name or hex representation. """
         if func_id >= 0x80:
             func_id -= 0x80
-        return self._func_names.get(func_id, f'0x{func_id:02x}')
+        try:
+            return f'{self._func_names[func_id]} (0x{func_id:02x})'
+        except KeyError:
+            return f'0x{func_id:02x}'
 
     def analyze(self, frame: bytes):
         """ Process current frame and produce a message to stdout. """
@@ -506,10 +507,11 @@ class FrameAnalyzer:
         self.frm_now = ModbusRTUFrame(frame)
         # init msg with first part header
         msg = f'[{self.nb_frame:>6}] '
-        # analyze only if frame is valid
-        if self.frm_now.is_valid:
-            # update status
-            self.nb_good_crc += 1
+        # check frame validity
+        if not self.frm_now.is_valid:
+            # don't analyze invalid frame
+            msg += self._msg_err()
+        else:
             # add 2nd part header to msg
             f_name = self.func_name_by_id(self.frm_now.func_code)
             msg += f'slave {self.frm_now.slv_addr} "{f_name}" '
@@ -529,10 +531,6 @@ class FrameAnalyzer:
                     msg += self._msg_func_unknown()
             # keep current frame (with good CRC) for next analyze
             self.frm_last = self.frm_now
-        else:
-            # don't analyze frame with bad CRC
-            self.nb_bad_crc += 1
-            msg += self._msg_crc_err()
         # show message
         logger.info(msg)
 
