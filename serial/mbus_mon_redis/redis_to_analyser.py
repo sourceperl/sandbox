@@ -172,7 +172,7 @@ class FrameAnalyzer:
         try:
             tags_d = {}
             for i in range(0, len(tags_block), 10):
-                tag_name, tag_value = struct.unpack('>6sf', tags_block[i:i+10])
+                tag_name, tag_value = struct.unpack('<6sf', tags_block[i:i+10])
                 tag_name = tag_name.rstrip(b'\x00').decode().rstrip()
                 if cls._is_valid_tag(tag_name):
                     tags_d[tag_name] = tag_value
