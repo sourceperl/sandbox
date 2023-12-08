@@ -1,9 +1,30 @@
 # API endpoints
 
+## Setup for API test
+
+```bash
+# install curl and json parser "jq"
+sudo apt install curl jq 
+```
+
+## Request instant metric value
+
+```bash
+# query for my_metric last value until 15 minutes ago from now
+curl -s 'http://127.0.0.1:8428/api/v1/query' -d 'query=my_metric{}' -d 'step=15m' | jq .data.result
+```
+
+## Request range metric values
+
+```bash
+# query values for my_metric from last hour with steps of 1 minute
+curl -s 'http://127.0.0.1:8428/api/v1/query_range' -d 'query=my_metric{}' -d 'start=-1h' -d 'end=now' -d 'step=1m' | jq .data.result
+```
+
 ## List all available metrics
 
 ```bash
-curl -s http://127.0.0.1:8428/api/v1/label/__name__/values | jq
+curl -s http://127.0.0.1:8428/api/v1/label/__name__/values | jq .data
 ```
 
 ## Push metrics with influxdb line protocol
@@ -49,4 +70,13 @@ Publish a metric :
 echo "my_metric;tag1=value1;tag2=value2 123 `date +%s`" | nc -N localhost 2003
 # or without
 echo "my_metric;tag1=value1 123" | nc -N localhost 2003
+```
+
+## Export and import a metric as a list of json
+
+```bash
+# export
+curl -s http://127.0.0.1:8428/api/v1/export -d 'match[]=my_metric' > my_metric.jsonl
+# import
+curl -s http://127.0.0.1:8428/api/v1/import -T my_metric.jsonl
 ```
