@@ -12,7 +12,7 @@ from urllib.request import urlopen
 
 # some const
 CSV_URL = 'https://raw.githubusercontent.com/numenta/NAB/v1.1/data/artificialWithAnomaly/art_daily_flatmiddle.csv'
-VM_METRIC = 'my_test_metric'
+VM_METRIC = 'my_github_metric'
 VM_IP = '127.0.0.1'
 VM_PORT = 2003
 
