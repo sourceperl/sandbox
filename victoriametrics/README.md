@@ -80,3 +80,9 @@ curl -s http://127.0.0.1:8428/api/v1/export -d 'match[]=my_metric' > my_metric.j
 # import
 curl -s http://127.0.0.1:8428/api/v1/import -T my_metric.jsonl
 ```
+
+## Delete a metric
+
+```bash
+curl -s http://127.0.0.1:8428/api/v1/admin/tsdb/delete_series -d 'match[]=my_metric'
+```
