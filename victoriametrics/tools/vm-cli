@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+
+""" VictoriaMetrics cli tool. """
+
+import argparse
+from cmd import Cmd
+from datetime import datetime, timezone
+import json
+from json.decoder import JSONDecodeError
+from urllib.error import URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+import sys
+
+
+class VmCli(Cmd):
+    """ CLI tool to deal with VictoriaMetrics DB. """
+
+    VERSION = '0.0.1'
+    intro = 'CLI tool to deal with VictoriaMetrics DB (type help or ?).'
+    prompt = '> '
+    vm_host = '127.0.0.1'
+    vm_port = 8428
+    vm_timeout = 4.0
+
+    @property
+    def vm_base_url(self):
+        """VictoriaMetrics base URL for all requests"""
+        return f'http://{self.vm_host}:{self.vm_port}'
+
+    def emptyline(self) -> bool:
+        """Avoid empty line execute again the last command"""
+        return
+
+    # def precmd(self, line: str) -> str:
+    #     """Allow comment in cli"""
+    #     if '#' in line:
+    #         line = line.split('#')[0]
+    #     return line
+
+    def do_add(self, args: str = ''):
+        """Add a metric value"""
+        # command args
+        args_l = args.split()
+        metric = args_l[0]
+        value  = float(args_l[1])
+        try:
+            timestamp  = int(args_l[2])
+        except IndexError:
+            timestamp = round(datetime.now(timezone.utc).timestamp())
+        # format publication message as a compact json message
+        pub_msg = f' {metric}={value} {timestamp}'
+        # post message to VictoriaMerctrics
+        try:
+            query_url = f'{self.vm_base_url}/write'
+            with urlopen(Request(query_url, data=pub_msg.encode()), timeout=self.vm_timeout) as resp:
+                if resp.status == 204:
+                    print(f'import {len(pub_msg)} bytes OK')
+        except URLError as e:
+            print(f'error occur: {e!r}')
+
+    def do_delete(self, arg: str = ''):
+        """Delete a metric"""
+        try:
+            query_prm = urlencode({'match[]': arg})
+            query_url = f'{self.vm_base_url}/api/v1/admin/tsdb/delete_series?{query_prm}'
+            with urlopen(query_url, timeout=self.vm_timeout) as resp:
+                if resp.status == 204:
+                    print('delete OK')
+        except (JSONDecodeError, URLError) as e:
+            print(f'error: {e}')
+
+    def do_list(self, _arg):
+        """List all available metrics"""
+        try:
+            query_prm = urlencode({'start': '-3y'})
+            query_url = f'{self.vm_base_url}/api/v1/label/__name__/values?{query_prm}'
+            with urlopen(query_url, timeout=self.vm_timeout) as resp:
+                js_d = json.loads(resp.read())
+                if js_d.get('status', '') == 'success':
+                    for metric in js_d.get('data', []):
+                        print(metric)
+        except (JSONDecodeError, URLError) as e:
+            print(f'error: {e}')
+
+    def do_version(self, _arg):
+        """Print vm-cli version"""
+        print(f'vm-cli {self.VERSION}')
+
+    def do_exit(self, _arg):
+        """Exit from cli"""
+        return True
+
+
+if __name__ == '__main__':
+    # init
+    vm_cli = VmCli()
+    # parse command line args
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-H', '--host', type=str, default=vm_cli.vm_host,
+                        help=f'Host (default: "{vm_cli.vm_host}")')
+    parser.add_argument('-p', '--port', type=int, default=vm_cli.vm_port,
+                        help=f'TCP port (default: {vm_cli.vm_port})')
+    parser.add_argument('-t', '--timeout', type=float, default=vm_cli.vm_timeout,
+                        help=f'socket timeout (default: {vm_cli.vm_timeout})')
+    parser.add_argument('command', nargs='*', default='',
+                        help='vm-cli command to execute')
+    args = parser.parse_args()
+    # apply command line args
+    vm_cli.vm_host = args.host
+    vm_cli.vm_port = args.port
+    vm_cli.vm_timeout = args.timeout
+    # run tool
+    try:
+        # start cli loop or just a one shot run (command set at cmd line)
+        if not args.command:
+            vm_cli.cmdloop()
+        else:
+            # convert list of args -> command line
+            cmd_line = ' '.join(args.command)
+            vm_cli.onecmd(cmd_line)
+    except KeyboardInterrupt:
+        sys.exit(0)
