@@ -4,9 +4,9 @@
 
 import argparse
 from cmd import Cmd
-from datetime import datetime, timezone
 import json
 from json.decoder import JSONDecodeError
+import re
 from urllib.error import URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -40,26 +40,48 @@ class VmCli(Cmd):
 
     def do_add(self, args: str = ''):
         """Add a metric value"""
-        # command args
+        # process command args: "add metric value [timestamp_ms]"
         args_l = args.split()
-        metric = args_l[0]
-        value  = float(args_l[1])
         try:
-            timestamp  = int(args_l[2])
+            # mandatory args
+            # metric name
+            metric = args_l[0].strip()
+            # allow promethus metric name, disallow double underscore as first chars
+            if not re.match(r'^(?!.*__.*)[a-zA-Z_:][a-zA-Z0-9_:]*', metric):
+                print('bad metric name (a good one could be my_metric{tag="foo"})')
+                return
+            # value
+            try:
+                value  = float(args_l[1].strip())
+            except ValueError:
+                print('bad metric value (a good one could be 42.0)')
+                return
+            # timestamp (in ms): it's an optional arg
+            try:
+                timestamp_ms  = int(args_l[2].strip())
+            except IndexError:
+                timestamp_ms = ''
+            except (TypeError, ValueError):
+                print('bad timestamp (a good one could be 1702289355551)')
+                return
         except IndexError:
-            timestamp = round(datetime.now(timezone.utc).timestamp())
+            print('error: bad invocation (a good one is "add metric value [timestamp_ms]")')
+            return
         # format publication message as a compact json message
-        pub_msg = f' {metric}={value} {timestamp}'
+        pub_msg = f'{metric} {value}'
+        if timestamp_ms:
+            pub_msg += f' {timestamp_ms}'
         # post message to VictoriaMerctrics
         try:
-            query_url = f'{self.vm_base_url}/write'
+            query_url = f'{self.vm_base_url}/api/v1/import/prometheus'
             with urlopen(Request(query_url, data=pub_msg.encode()), timeout=self.vm_timeout) as resp:
                 if resp.status == 204:
+                    print(f'DEBUG publish {pub_msg=}')
                     print(f'import {len(pub_msg)} bytes OK')
         except URLError as e:
-            print(f'error occur: {e!r}')
+            print(f'error: {e!r}')
 
-    def do_delete(self, arg: str = ''):
+    def do_del(self, arg: str = ''):
         """Delete a metric"""
         try:
             query_prm = urlencode({'match[]': arg})
