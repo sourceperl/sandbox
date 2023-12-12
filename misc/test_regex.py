@@ -1,19 +1,22 @@
-""" Test of regex. 
+#!/usr/bin/env python3
+
+""" Test of regex.
 
 - just pass string(s) as args on command line to test it.
 """
 
+from pprint import pprint
 import re
 import sys
 
 
 for test_str in sys.argv[1:]:
-    print(f'"{test_str}"')
-    result = re.search(r'^(?!.*__.*)([a-zA-Z_:][a-zA-Z0-9_:]*)(?:\{([a-zA-Z0-9,\=\"]*)\})*', test_str)
+    print(f'test "{test_str}"')
+    result = re.search(r'^(?!__.*)(?P<name>[a-zA-Z_:][a-zA-Z0-9_:]*)(?:{(?P<labels>[^}]*)})?$', test_str)
 
     if result:
-        re_groups = result.groups()
-        print(f'find groups: {re_groups}')
+        print(f'\tfind name: {result.group("name")}')
+        print(f'\tfind labels: {result.group("labels")}')
     else:
         print('no match')
     print('')

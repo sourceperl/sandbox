@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """ VictoriaMetrics cli tool. """
 
@@ -45,27 +45,38 @@ class VmCli(Cmd):
         try:
             # mandatory args
             # metric name
-            metric = args_l[0].strip()
-            # allow promethus metric name, disallow double underscore as first chars
-            if not re.match(r'^(?!.*__.*)[a-zA-Z_:][a-zA-Z0-9_:]*', metric):
-                print('bad metric name (a good one could be my_metric{tag="foo"})')
-                return
-            # value
             try:
-                value  = float(args_l[1].strip())
+                metric = args_l[0].strip()
+                # check "name" part of metric (disallow double underscore as first chars)
+                m_regex = r'^(?!__.*)(?P<name>[a-zA-Z_:][a-zA-Z0-9_:]*)(?:{(?P<labels>[^}]*)})?$'
+                metric_match = re.match(m_regex, metric)
+                if not metric_match:
+                    raise ValueError
+                # check "labels" part of metric
+                labels_part = metric_match.group('labels')
+                if labels_part:
+                    l_regex = r'^((?!__.*)[a-zA-Z_][a-zA-Z0-9_]*="[^"]*",?)+$'
+                    labels_match = re.match(l_regex, labels_part)
+                    if not labels_match:
+                        raise ValueError
             except ValueError:
-                print('bad metric value (a good one could be 42.0)')
+                print('bad metric syntax (a valid example: my_metric{tag="foo"})')
+                return
+            try:
+                value = float(args_l[1].strip())
+            except ValueError:
+                print('bad value (a good one could be 42.0)')
                 return
             # timestamp (in ms): it's an optional arg
             try:
-                timestamp_ms  = int(args_l[2].strip())
+                timestamp_ms = int(args_l[2].strip())
             except IndexError:
                 timestamp_ms = ''
             except (TypeError, ValueError):
                 print('bad timestamp (a good one could be 1702289355551)')
                 return
         except IndexError:
-            print('error: bad invocation (a good one is "add metric value [timestamp_ms]")')
+            print('error: bad invocation (a valid example: add my_metric{tag="foo"} 42.0 1702402717661")')
             return
         # format publication message as a compact json message
         pub_msg = f'{metric} {value}'
@@ -76,8 +87,7 @@ class VmCli(Cmd):
             query_url = f'{self.vm_base_url}/api/v1/import/prometheus'
             with urlopen(Request(query_url, data=pub_msg.encode()), timeout=self.vm_timeout) as resp:
                 if resp.status == 204:
-                    print(f'DEBUG publish {pub_msg=}')
-                    print(f'import {len(pub_msg)} bytes OK')
+                    print(f'publish "{pub_msg}" OK')
         except URLError as e:
             print(f'error: {e!r}')
 
