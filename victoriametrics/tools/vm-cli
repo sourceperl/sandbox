@@ -16,12 +16,16 @@ import sys
 class VmCli(Cmd):
     """ CLI tool to deal with VictoriaMetrics DB. """
 
-    VERSION = '0.0.1'
     intro = 'CLI tool to deal with VictoriaMetrics DB (type help or ?).'
-    prompt = '> '
     vm_host = '127.0.0.1'
     vm_port = 8428
     vm_timeout = 4.0
+    VERSION = '0.0.1'
+
+    @property
+    def prompt(self):
+        """Set cli prompt (like "127.0.0.1:8428> ")"""
+        return f'{self.vm_host}:{self.vm_port}> '
 
     @property
     def vm_base_url(self):
@@ -30,7 +34,7 @@ class VmCli(Cmd):
 
     def emptyline(self) -> bool:
         """Avoid empty line execute again the last command"""
-        return
+        return False
 
     # def precmd(self, line: str) -> str:
     #     """Allow comment in cli"""
@@ -48,16 +52,15 @@ class VmCli(Cmd):
             try:
                 metric = args_l[0].strip()
                 # check "name" part of metric (disallow double underscore as first chars)
-                m_regex = r'^(?!__.*)(?P<name>[a-zA-Z_:][a-zA-Z0-9_:]*)(?:{(?P<labels>[^}]*)})?$'
-                metric_match = re.match(m_regex, metric)
+                met_regex = r'(?!__.*)(?P<name>[a-zA-Z_:][a-zA-Z0-9_:]*)(?:{(?P<labels>[^}]*?)})?'
+                metric_match = re.fullmatch(met_regex, metric)
                 if not metric_match:
                     raise ValueError
                 # check "labels" part of metric
                 labels_part = metric_match.group('labels')
                 if labels_part:
-                    l_regex = r'^((?!__.*)[a-zA-Z_][a-zA-Z0-9_]*="[^"]*",?)+$'
-                    labels_match = re.match(l_regex, labels_part)
-                    if not labels_match:
+                    lbl_regex = r'(?:(?!__.*)[a-zA-Z_][a-zA-Z0-9_]*=\"[^\"]*\",?)+'
+                    if not re.fullmatch(lbl_regex, labels_part):
                         raise ValueError
             except ValueError:
                 print('bad metric syntax (a valid example: my_metric{tag="foo"})')
@@ -91,7 +94,7 @@ class VmCli(Cmd):
         except URLError as e:
             print(f'error: {e!r}')
 
-    def do_del(self, arg: str = ''):
+    def do_delete(self, arg: str = ''):
         """Delete a metric"""
         try:
             query_prm = urlencode({'match[]': arg})
