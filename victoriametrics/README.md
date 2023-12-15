@@ -27,6 +27,17 @@ curl -s 'http://127.0.0.1:8428/api/v1/query_range' -d 'query=my_metric{}' -d 'st
 curl -s http://127.0.0.1:8428/api/v1/label/__name__/values | jq .data
 ```
 
+## Push metrics with Prometheus exposition format
+
+Prometheus exposition format: "metric_name{label_name="label_value"} value timestamp_ms"
+
+```bash
+# push metric value
+curl -s 'http://127.0.0.1:8428/api/v1/import/prometheus' -d "my_metric{tag=\"foo\"} 42.0 `date +%s%3N`"
+# push metric value (use current VM DB host time)
+curl -s 'http://127.0.0.1:8428/api/v1/import/prometheus' -d 'my_metric{tag="foo"} 42.0'
+```
+
 ## Push metrics with influxdb line protocol
 
 On VM line protocol "my_metric,tag1=value1,tag2=value2 field1=1.0,field2=2.0"
@@ -43,7 +54,7 @@ curl -s 'http://127.0.0.1:8428/api/v1/query?query=my_metric_field1' | jq
 curl -s 'http://127.0.0.1:8428/api/v1/query?query=my_metric_field2' | jq
 ```
 
-To avoird to add field part to metric name, we can use "unnamed metric" like in line ",tag1=value1,tag2=value2 my_metric=1.0"
+To avoid adding field part to metric name, we can use "unnamed metric" like in line ",tag1=value1,tag2=value2 my_metric=1.0"
 
 publish:
 - my_metric{tag1="value1", tag2="value2"} 1.0
@@ -72,13 +83,19 @@ echo "my_metric;tag1=value1;tag2=value2 123 `date +%s`" | nc -N localhost 2003
 echo "my_metric;tag1=value1 123" | nc -N localhost 2003
 ```
 
-## Export and import a metric as a list of json
+## Export and import
+
+### As a json list
 
 ```bash
-# export
+# export a specific metric
 curl -s http://127.0.0.1:8428/api/v1/export -d 'match[]=my_metric' > my_metric.jsonl
+# export all with gzip compression
+curl -s http://127.0.0.1:8428/api/v1/export -d 'match[]={__name__!=""}' | gzip > vm_full.jsonl.gz
 # import
 curl -s http://127.0.0.1:8428/api/v1/import -T my_metric.jsonl
+# import a gzipped file
+curl -s -X POST -H 'Content-Encoding: gzip' http://127.0.0.1:8428/api/v1/import -T vm_full.jsonl.gz
 ```
 
 ## Delete a metric
