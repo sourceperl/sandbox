@@ -75,6 +75,7 @@ class ModbusSerialWorker:
     def send_frame(self, frame: bytes):
         # send over serial port
         self.serial_port.write(frame)
+        self.serial_port.flush()
         # add silence to ensure end of frame detection
         time.sleep(0.05)
 
