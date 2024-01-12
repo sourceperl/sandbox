@@ -11,7 +11,7 @@ import struct
 import sys
 import time
 # sudo pip install pyserial==3.4
-from serial import Serial, serialutil
+from serial import Serial, serialutil, PARITY_NONE
 
 
 # some consts
@@ -36,6 +36,10 @@ def crc16(frame: bytes):
             if lsb:
                 crc ^= 0xA001
     return crc
+
+
+def add_crc(frame: bytes):
+    return frame + struct.pack('<H', crc16(frame))
 
 
 # some class
@@ -72,12 +76,19 @@ class ModbusSerialWorker:
         self.det_hourly_station_d = (('VNFHN', 0.0), ('VNFAHN', 0.0), ('VNRHN', 0.0), ('VNRAHN', 0.0), ('EFHN', 0.0),
                                      ('EFAHN', 0.0), ('ERHN', 0.0), ('ERAHN', 0.0))
 
+    @property
+    def serial_byte_delay_s(self) -> float:
+        """ Return the delay of transmission of one byte over the serial line in seconds. """
+        parity_len = 0 if self.serial_port.parity == PARITY_NONE else 1
+        symbol_len = 1 + self.serial_port.bytesize + parity_len + self.serial_port.stopbits
+        return symbol_len/self.serial_port.baudrate
+    
     def send_frame(self, frame: bytes):
         # send over serial port
         self.serial_port.write(frame)
         self.serial_port.flush()
         # add silence to ensure end of frame detection
-        time.sleep(0.05)
+        time.sleep(self.serial_byte_delay_s * 3.5 * 2) 
 
     def flx_hourly_station_data(self):
         # format request frame
@@ -251,9 +262,7 @@ class ModbusSerialWorker:
 
     def random_frame_with_crc(self):
         # generate frame
-        frame = os.urandom(randint(1, 253))
-        # add CRC
-        frame += struct.pack('<H', crc16(frame))
+        frame = add_crc(os.urandom(randint(3, 253)))
         # send it
         self.send_frame(frame)
 
