@@ -12,14 +12,14 @@ import matplotlib.pyplot as plt
 CSV_URL = 'https://scrippsco2.ucsd.edu/assets/data/atmospheric/stations/in_situ_co2/monthly/monthly_in_situ_co2_mlo.csv'
 
 # read CSV as a dataframe (data from Scripps institute)
-co2_month_df = pd.read_csv(CSV_URL, header=56)
+co2_month_df = pd.read_csv(CSV_URL, header=65)
 
 # csv use -99.99 for no data: here we replace this with nan value
 co2_month_df.replace(to_replace=-99.99, value=np.nan, inplace=True)
 
 # fix column names
 cols = ['year', 'month', '--', '--', 'CO2', 'seasonaly_adjusted', 'fit',
-        'seasonally_adjusted_fit', 'CO2_filled', 'seasonally_adjusted_filled']
+        'seasonally_adjusted_fit', 'CO2_filled', 'seasonally_adjusted_filled', 'sta']
 co2_month_df.columns = cols
 # remove unused columns from dataframe
 cols.remove('--')
