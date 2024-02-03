@@ -8,7 +8,8 @@ Export data from flyspray to a CSV file.
 import argparse
 from codecs import BOM_UTF8
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
+import logging
 from os.path import join
 import time
 # apt install python3-pymysql
@@ -20,6 +21,7 @@ from private_data import DB_USER, DB_PWD
 
 # some const
 PUB_PATH = '/var/www/html/pub/'
+SCHED_H = '00:45'
 
 
 # some const
@@ -56,48 +58,61 @@ class ExcelFr(csv.excel):
 csv.register_dialect('excel-fr', ExcelFr())
 
 
+# some function
+def db2csv(db: str, fly_id: str, year: int):
+    # define export params
+    exp_file = join(PUB_PATH, fly_id, f'fly_{fly_id}_{year}.csv')
+    sql_open_from_ts = round(datetime(year, 1, 1, 0, 0, 0).timestamp())
+    sql_open_to_ts = round(datetime(year, 12, 31, 23, 59, 59).timestamp())
+
+    # connect to DB
+    db = pymysql.connect(db=db,
+                         user=DB_USER,
+                         password=DB_PWD,
+                         charset='utf8mb4',
+                         cursorclass=pymysql.cursors.DictCursor)
+
+    with db.cursor() as cursor:
+        # do request
+        sql_req = SQL.format(from_ts=sql_open_from_ts, to_ts=sql_open_to_ts)
+        if cursor.execute(sql_req):
+            with open(exp_file, 'w') as out_file:
+                # write an UTF-8 BOM (for overide default charset on Excel)
+                out_file.write(BOM_UTF8.decode('utf8'))
+                # build CSV
+                w = csv.DictWriter(out_file, fieldnames=CSV_FIELDS,
+                                   extrasaction='ignore', dialect='excel-fr')
+                # add header line
+                w.writeheader()
+                # add lines
+                for d in cursor.fetchall():
+                    # update datetime fields (timestamp -> str date)
+                    for (k, v) in d.items():
+                        if k.startswith('date_') or k.endswith('_time'):
+                            ts = int(v)
+                            if ts > 0:
+                                d[k] = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+                            else:
+                                d[k] = ''
+                    # add current line to CSV
+                    w.writerow(d)
+
+
 # schedule job(s)
-def export_job(db: str, fly_id: str, exp_year: int = None):
-    try:
-        # define export params
-        exp_year = exp_year if exp_year else datetime.now().year
-        exp_file = join(PUB_PATH, fly_id, f'fly_{fly_id}_{exp_year}.csv')
-        sql_open_from_ts = round(datetime(exp_year, 1, 1, 0, 0, 0).timestamp())
-        sql_open_to_ts = round(datetime(exp_year, 12, 31, 23, 59, 59).timestamp())
-
-        # connect to DB
-        db = pymysql.connect(db=db,
-                             user=DB_USER,
-                             password=DB_PWD,
-                             charset='utf8mb4',
-                             cursorclass=pymysql.cursors.DictCursor)
-
-        with db.cursor() as cursor:
-            # do request
-            sql_req = SQL.format(from_ts=sql_open_from_ts, to_ts=sql_open_to_ts)
-            if cursor.execute(sql_req):
-                with open(exp_file, 'w') as out_file:
-                    # write an UTF-8 BOM (for overide default charset on Excel)
-                    out_file.write(BOM_UTF8.decode('utf8'))
-                    # build CSV
-                    w = csv.DictWriter(out_file, fieldnames=CSV_FIELDS,
-                                       extrasaction='ignore', dialect='excel-fr')
-                    # add header line
-                    w.writeheader()
-                    # add lines
-                    for d in cursor.fetchall():
-                        # update datetime fields (timestamp -> str date)
-                        for (k, v) in d.items():
-                            if k.startswith('date_') or k.endswith('_time'):
-                                ts = int(v)
-                                if ts > 0:
-                                    d[k] = datetime.utcfromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
-                                else:
-                                    d[k] = ''
-                        # add current line to CSV
-                        w.writerow(d)
-    except Exception as e:
-        print(f'error occur during export_job run: {e} ')
+def export_job():
+    # csv year export target = yesterday year
+    exp_year = (datetime.now() - timedelta(days=1)).year
+    # logging job startup
+    logging.info(f'start of export job for year {exp_year}')
+    # export all databases for this target year
+    for db_name, fly_id in [('flyspray-tca', 'tca'), ('flyspray-tne', 'tne'),
+                            ('flyspray-trm', 'trm'), ('flyspray-tvs', 'tvs')]:
+        try:
+            db2csv(db=db_name, fly_id=fly_id, year=exp_year)
+        except Exception as e:
+            logging.error(f'error occur during csv build: {e}')
+    # logging job end
+    logging.info(f'end of export job')
 
 
 if __name__ == '__main__':
@@ -105,21 +120,29 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--rebuild', action='store_true', help='rebuild mode (from 2010 to now, then exit)')
     args = parser.parse_args()
+    # logging setup
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+    # avoid "schedule" module pollute the main log
+    logging.getLogger('schedule').propagate = False
 
     # for rebuild purpose
     if args.rebuild:
-        for y in range(2010, datetime.now().year):
-            export_job(db='flyspray-tca', fly_id='tca', exp_year=y)
-            export_job(db='flyspray-tne', fly_id='tne', exp_year=y)
-            export_job(db='flyspray-trm', fly_id='trm', exp_year=y)
-            export_job(db='flyspray-tvs', fly_id='tvs', exp_year=y)
+        logging.info('start rebuild')
+        for y in range(2010, datetime.now().year + 1):
+            logging.info(f'rebuild year {y}')
+            db2csv(db='flyspray-tca', fly_id='tca', year=y)
+            db2csv(db='flyspray-tne', fly_id='tne', year=y)
+            db2csv(db='flyspray-trm', fly_id='trm', year=y)
+            db2csv(db='flyspray-tvs', fly_id='tvs', year=y)
+        logging.info('end of rebuild -> exit')
         exit()
 
+    # daemon mode start msg
+    logging.info('start in daemon mode')
+
     # init schedule (WARN: server local time is UTC time)
-    schedule.every().day.at('23:45').do(lambda: export_job(db='flyspray-tca', fly_id='tca'))
-    schedule.every().day.at('23:45').do(lambda: export_job(db='flyspray-tne', fly_id='tne'))
-    schedule.every().day.at('23:45').do(lambda: export_job(db='flyspray-trm', fly_id='trm'))
-    schedule.every().day.at('23:45').do(lambda: export_job(db='flyspray-tvs', fly_id='tvs'))
+    logging.info(f'export job schedule every day at {SCHED_H}')
+    schedule.every().day.at(SCHED_H).do(export_job)
 
     # main loop
     while True:
