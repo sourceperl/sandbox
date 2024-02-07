@@ -69,8 +69,8 @@ csv.register_dialect('excel-fr', ExcelFr())
 # some function
 def db2csv(db: str, fly_id: str, year: int):
     # define export params
-    path_file_csv = join(PUB_PATH, fly_id, f'fly_{fly_id}_{year}.csv')
-    path_file_xslsx = join(PUB_PATH, f'test/{fly_id}', f'fly_{fly_id}_{year}.xlsx')
+    path_file_csv = join(PUB_PATH, f'exports/annual_csv/fly_{fly_id}_{year}.csv')
+    path_file_xlsx = join(PUB_PATH, f'exports/annual_xlsx/fly_{fly_id}_{year}.xlsx')
     sql_open_from_ts = round(datetime(year, 1, 1, 0, 0, 0).timestamp())
     sql_open_to_ts = round(datetime(year, 12, 31, 23, 59, 59).timestamp())
 
@@ -225,7 +225,7 @@ def db2csv(db: str, fly_id: str, year: int):
                                                     showLastColumn=False, showRowStripes=True, showColumnStripes=False)
                 ws1.add_table(tab)
                 # save all to xlsx file
-                wb.save(filename=path_file_xslsx)
+                wb.save(filename=path_file_xlsx)
 
 
 # schedule job(s)
