@@ -30,34 +30,54 @@ class MainFrame(tk.Frame):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         # canvas setup
-        self.my_can = MyCanvas(self, width=600, height=400, background='black')
+        self.my_can = MyCanvas(self, width=800, height=600, background='black')
         self.my_can.grid(row=0, column=0, padx=10, pady=10)
         # draw on canvas
-        self.sun_oval = self.my_can.create_disk(x=300, y=200, size=30, fill='yellow')
-        self.mars_oval = self.my_can.create_disk(x=150, y=100, size=15, fill='orange')
-        self.earth_oval = self.my_can.create_disk(x=150, y=100, size=20, fill='blue')
-        self.moon_oval = self.my_can.create_disk(x=150, y=100, size=10, fill='gray')
+        self.sun_disk = self.my_can.create_disk(x=400, y=300, size=40, fill='yellow')
+        self.mercury_disk = self.my_can.create_disk(x=0, y=0, size=10, fill='#8c8c94')
+        self.venus_disk = self.my_can.create_disk(x=0, y=0, size=10, fill='#f8e2b0')
+        self.earth_disk = self.my_can.create_disk(x=0, y=0, size=20, fill='#4f4cb0')
+        self.moon_disk = self.my_can.create_disk(x=0, y=0, size=5, fill='#ada8a5')
+        self.mars_disk = self.my_can.create_disk(x=0, y=0, size=15, fill='#c1440e')
+        self.jupiter_disk = self.my_can.create_disk(x=0, y=0, size=30, fill='#c99039')
+        self.saturn_disk = self.my_can.create_disk(x=0, y=0, size=30, fill='#eddbad')
         # periodic job
         self.do_every(self.every_10ms_job, every_ms=10)
 
     def every_10ms_job(self):
         # now
         t0 = time.time()
-        # animate mars
-        x_sun, y_sun = self.my_can.xy_coords(self.sun_oval)
-        self.my_can.set_xy_coords(self.mars_oval,
-                                  x=x_sun + 180 * cos(t0/4),
-                                  y=y_sun + 180 * sin(t0/4))
+        # get coordinates
+        x_sun, y_sun = self.my_can.xy_coords(self.sun_disk)
+        x_earth, y_earth = self.my_can.xy_coords(self.earth_disk)
+        # animate mercury
+        self.my_can.set_xy_coords(self.mercury_disk,
+                                  x=x_sun + 40 * cos(t0*4),
+                                  y=y_sun + 40 * sin(t0*4))
+        # animate venus
+        self.my_can.set_xy_coords(self.venus_disk,
+                                  x=x_sun + 70 * cos(t0*2),
+                                  y=y_sun + 70 * sin(t0*2))
         # animate earth
-        x_sun, y_sun = self.my_can.xy_coords(self.sun_oval)
-        self.my_can.set_xy_coords(self.earth_oval,
-                                  x=x_sun + 120 * cos(t0/2),
-                                  y=y_sun + 120 * sin(t0/2))
+        self.my_can.set_xy_coords(self.earth_disk,
+                                  x=x_sun + 120 * cos(t0),
+                                  y=y_sun + 120 * sin(t0))
         # animate moon
-        x_earth, y_earth = self.my_can.xy_coords(self.earth_oval)
-        self.my_can.set_xy_coords(self.moon_oval,
+        self.my_can.set_xy_coords(self.moon_disk,
                                   x=x_earth + 30 * cos(t0*6),
                                   y=y_earth + 30 * sin(t0*6))
+        # animate mars
+        self.my_can.set_xy_coords(self.mars_disk,
+                                  x=x_sun + 180 * cos(t0/4), 
+                                  y=y_sun + 180 * sin(t0/4))
+        # animate jupiter
+        self.my_can.set_xy_coords(self.jupiter_disk,
+                                  x=x_sun + 230 * cos(t0/6),
+                                  y=y_sun + 230 * sin(t0/6))
+        # animate saturn
+        self.my_can.set_xy_coords(self.saturn_disk,
+                                  x=x_sun + 280 * cos(t0/8),
+                                  y=y_sun + 280 * sin(t0/8))
 
     def do_every(self, do_cmd, every_ms=1000):
         do_cmd()
