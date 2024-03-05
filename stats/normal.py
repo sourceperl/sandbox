@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """ Plot a normal distribution. """
 
 import math
