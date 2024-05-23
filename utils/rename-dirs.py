@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-""" Rename directories in current directory. """
+""" Rename directories in a specific path. """
 
 import os
 from os import path
@@ -19,14 +19,14 @@ def upper_rate(text: str) -> float:
 # main app (exit with ctrl-c)
 try:
     # current path is base directory
-    base_dir = os.getcwd()
+    base_dir = 'C:/My/Specific/Path'
 
     for entry in os.listdir(base_dir):
         # skip if it's not a directory
-        if not path.isdir(entry):
+        if not path.isdir(path.join(base_dir, entry)):
             continue
         # already in the correct form
-        if upper_rate(entry) < 0.5:
+        if upper_rate(entry) < 0.4:
             continue
         # rename directory
         cur_dir = entry
@@ -36,9 +36,11 @@ try:
             tokens_l[-1] = tokens_l[-1].upper()
         new_dir = ' '.join(tokens_l)
         # confirm operation
+        cur_dir_path = path.join(base_dir, cur_dir)
+        new_dir_path = path.join(base_dir, new_dir)
         confirm_str = input(f'rename directory "{cur_dir}" to "{new_dir}" [(y)es/(n)o] ?')
         if confirm_str in ('Y', 'y'):
-            print(f'do "{cur_dir}" -> "{new_dir}"')
-            os.rename(cur_dir, new_dir)
+            print(f'do "{cur_dir_path}" -> "{new_dir_path}"')
+            os.rename(cur_dir_path, new_dir_path)
 except KeyboardInterrupt:
     pass
