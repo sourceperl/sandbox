@@ -49,7 +49,7 @@ def aio_job():
                 else:
                     logging.warning(f'unable to write data')
             except urllib.error.URLError as e:
-                print(f'urllib error occur: {e!r}')
+                logging.warning(f'urllib error occur: {e!r}')
     except redis.RedisError as e:
         logging.error(f'redis error occur: {e!r}')
 
