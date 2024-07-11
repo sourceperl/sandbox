@@ -23,11 +23,11 @@ try:
             event_id = int(row['#EventID'])
             event_dt = parse(row['Time']).replace(tzinfo=timezone.utc)
             try:
-                depth_km = float(row['Depth/km'])
+                depth_km = float(row['Depth'])
             except ValueError:
                 depth_km = None
             try:
-                mag = float(row['Magnitude'])
+                mag = float(row['MD'])
             except ValueError:
                 mag = None
             if mag and mag > 2.0:
