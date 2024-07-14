@@ -9,18 +9,21 @@ from typing import List
 from urllib.error import URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
+from zoneinfo import ZoneInfo
 
 
 # some const
-BASE_URL = 'https://opendata.lillemetropole.fr/api/explore/v2.1/catalog/datasets/ilevia-prochainspassages/records?'
+TZ_PARIS = ZoneInfo('Europe/Paris')
+BASE_URL = 'https://data.lillemetropole.fr/data/ogcapi/collections/prochains_passages/items?'
 
 
 # some class
 @dataclass
 class Departure:
-    line_id: str
-    dest_id: str
+    line_code: str
+    line_direction: str
     station_id: str
+    station_name: str
     start_at_dt: datetime
     update_at_dt: datetime
 
@@ -35,7 +38,13 @@ class Departure:
 
 # request data from MEL opendata platform
 try:
-    search_args = {'order_by': 'heureestimeedepart', 'refine': 'nomstation:REPUBLIQUE BEAUX ARTS', 'limit': '100'}
+    filter_str = "\"identifiant_station\" IN " \
+                 "('ILEVIA:StopPoint:BP:PAS002:LOC',"\
+                 " 'ILEVIA:StopPoint:BP:PAS003:LOC')"
+    search_args = {'filter-lang': 'ecql-text',
+                   'filter': filter_str,
+                   'sortby': 'heure_estimee_depart',
+                   'limit': '-1'}
     url = BASE_URL + urlencode(search_args)
     response = urlopen(url, timeout=4.0)
     # check HTTP response code
@@ -44,16 +53,23 @@ try:
     # convert response
     js_d = json.loads(response.read())
     deps_list: List[Departure] = list()
-    for record in js_d['results']:
-        dep = Departure(line_id=record['codeligne'],
-                        dest_id=record['sensligne'],
-                        station_id=record['identifiantstation'],
-                        start_at_dt=datetime.fromisoformat(record['heureestimeedepart']).astimezone(tz=None),
-                        update_at_dt=datetime.fromisoformat(record['datemodification']).astimezone(tz=None))
+    for feature in js_d['features']:
+        prop = feature['properties']
+        dep = Departure(line_code=prop['code_ligne'],
+                        line_direction=prop['sens_ligne'],
+                        station_id=prop['identifiant_station'],
+                        station_name=prop['nom_station'],
+                        start_at_dt=datetime.fromisoformat(prop['heure_estimee_depart']),
+                        update_at_dt=datetime.fromisoformat(prop['date_modification']))
+        # alter bad timezone setting (this is a server-side bug: iso strings are marked as UTC instead of local)
+        dep.start_at_dt = dep.start_at_dt.replace(tzinfo=TZ_PARIS)
+        dep.update_at_dt = dep.update_at_dt.replace(tzinfo=TZ_PARIS)
+        # add to list of departure
         deps_list.append(dep)
     # show results
     for dep in deps_list:
-        msg = f"{dep.start_at_dt.strftime('%H:%M:%S'):8} [{dep.start_in_mn:4} mn]   {dep.line_id:6} {dep.dest_id:32}"
+        msg = f"{dep.start_at_dt.strftime('%H:%M:%S'):8} [{dep.start_in_mn:4} mn]   {dep.line_code:6} " \
+              f"{dep.station_name} -> {dep.line_direction:32}"
         print(msg)
 except (KeyError, ValueError, URLError) as e:
     print(f'error occur: {e!r}')
