@@ -1,4 +1,4 @@
-"""Push some metrics to VictoriaMetrics with graphite protocol.
+"""Push some metrics to VictoriaMetrics with graphite protocol over TCP.
 
 https://docs.victoriametrics.com/#how-to-send-data-from-graphite-compatible-agents-such-as-statsd
 """
