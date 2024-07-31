@@ -4,7 +4,6 @@
 
 import time
 import logging
-import urllib.error
 from urllib.request import urlopen, Request
 from private_data import AIO_USER, AIO_KEY
 # sudo apt install python3-redis
@@ -13,13 +12,22 @@ import redis
 import schedule
 
 
+# globals vars
+aio_update = 0
+
+
 # define schedule jobs
 def aio_job():
     """Periodic adafruit IO update job."""
+    global aio_update
+
     try:
         # init feeds dict
         feeds_d = dict()
         # populate it with valid redis values
+        # feed aio_upd (aio update counter)
+        aio_update += 1
+        feeds_d['aio-upd'] = aio_update
         # feed cvm16_good
         try:
             r_value = int(rdb.get('cvm16:good'))
@@ -48,8 +56,8 @@ def aio_job():
                     logging.info(f'data write ok (json data: {js_str})')
                 else:
                     logging.warning(f'unable to write data')
-            except urllib.error.URLError as e:
-                logging.warning(f'urllib error occur: {e!r}')
+            except Exception as e:
+                logging.warning(f'aio update error: {e!r}')
     except redis.RedisError as e:
         logging.error(f'redis error occur: {e!r}')
 
