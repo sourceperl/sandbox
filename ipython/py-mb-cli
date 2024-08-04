@@ -13,6 +13,8 @@ from IPython import embed
 
 
 # some const
+NAME = 'py-mb-cli'
+VERSION = '0.0.1.dev0'
 HEADER_TXT = """pyModbusTCP: client interactive tool.
 
 Use 'cli' object to interract with server (like 'cli.read_coils(0)').
@@ -53,7 +55,14 @@ if __name__ == "__main__":
     parser.add_argument('-p', '--port', type=int, default=502, help='TCP port (default: 502)')
     parser.add_argument('-u', '--unit-id', type=int, default=1, help='unit id (default: 1)')
     parser.add_argument('-t', '--timeout', type=float, default=4.0, help='timeout (default: 4.0s)')
+    parser.add_argument('-v', '--version', action='store_true', help='output version and exit')
     args = parser.parse_args()
+
+    # version request
+    if args.version:
+        print(f'{NAME} {VERSION}')
+        exit(0)
+
     # init modbus client
     try:
         cli = CustomModbusClient(host=args.host, port=args.port, unit_id=args.unit_id,
