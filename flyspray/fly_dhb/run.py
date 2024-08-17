@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 import logging
 from os.path import join
 import time
-from typing import List
+from typing import List, Optional
 from zoneinfo import ZoneInfo
 # apt install python3-openpyxl
 from openpyxl import Workbook
@@ -39,8 +39,8 @@ class TaskInfo:
     status: str
     expl_team: str
     evt_nb: int
-    open_dt: datetime = None
-    last_evt_dt: datetime = None
+    open_dt: Optional[datetime] = None
+    last_evt_dt: Optional[datetime] = None
 
 
 # some function
@@ -77,30 +77,31 @@ def build_dsh_open_tasks():
                              charset='utf8mb4',
                              cursorclass=pymysql.cursors.DictCursor)
         # SQL request
-        with db.cursor() as cursor:
-            if cursor.execute(SQL):
-                # process sql result
-                for sql_d in cursor.fetchall():
-                    # init TaskInfo
-                    task_info = TaskInfo(fly_id=fly_id,
-                                         task_id=sql_d['task_id'],
-                                         project=sql_d['project_title'],
-                                         summary=sql_d['item_summary'],
-                                         status=sql_d['status_name'],
-                                         expl_team=sql_d['category_name'],
-                                         evt_nb=sql_d['comments_nb'],
-                                         )
-                    # add localized datetime items if defined
-                    if sql_d['date_opened']:
-                        as_utc_dt = datetime.fromtimestamp(sql_d['date_opened'], tz=timezone.utc)
-                        as_local_dt = as_utc_dt.astimezone(ZoneInfo('Europe/Paris')).replace(tzinfo=None)
-                        task_info.open_dt = as_local_dt
-                    if sql_d['last_edited_time']:
-                        as_utc_dt = datetime.fromtimestamp(sql_d['last_edited_time'], tz=timezone.utc)
-                        as_local_dt = as_utc_dt.astimezone(ZoneInfo('Europe/Paris')).replace(tzinfo=None)
-                        task_info.last_evt_dt = as_local_dt
-                    # populate task_l
-                    open_task_l.append(task_info)
+        with db:
+            with db.cursor() as cursor:
+                if cursor.execute(SQL):
+                    # process sql result
+                    for sql_d in cursor.fetchall():
+                        # init TaskInfo
+                        task_info = TaskInfo(fly_id=fly_id,
+                                            task_id=sql_d['task_id'],
+                                            project=sql_d['project_title'],
+                                            summary=sql_d['item_summary'],
+                                            status=sql_d['status_name'],
+                                            expl_team=sql_d['category_name'],
+                                            evt_nb=sql_d['comments_nb'],
+                                            )
+                        # add localized datetime items if defined
+                        if sql_d['date_opened']:
+                            as_utc_dt = datetime.fromtimestamp(sql_d['date_opened'], tz=timezone.utc)
+                            as_local_dt = as_utc_dt.astimezone(ZoneInfo('Europe/Paris')).replace(tzinfo=None)
+                            task_info.open_dt = as_local_dt
+                        if sql_d['last_edited_time']:
+                            as_utc_dt = datetime.fromtimestamp(sql_d['last_edited_time'], tz=timezone.utc)
+                            as_local_dt = as_utc_dt.astimezone(ZoneInfo('Europe/Paris')).replace(tzinfo=None)
+                            task_info.last_evt_dt = as_local_dt
+                        # populate task_l
+                        open_task_l.append(task_info)
         # sort task_l by last event dt
         open_task_l = sorted(open_task_l, key=lambda x: x.last_evt_dt, reverse=True)
 
