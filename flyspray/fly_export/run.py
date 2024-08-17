@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-""" 
+"""
 Export data from flyspray to a CSV file.
 
 """
@@ -22,11 +22,10 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 import pymysql
 # apt install python3-schedule
 import schedule
-from private_data import DB_USER, DB_PWD
+from private_data import DB_USER, DB_PWD, PUB_PATH
 
 
 # some const
-PUB_PATH = '/var/www/html/pub/'
 SCHED_H = '00:45'
 BUILD_CSV = True
 BUILD_XLSX = True
@@ -34,9 +33,9 @@ BUILD_XLSX = True
 
 # some const
 SQL = """
-SELECT  t.task_id, p.project_title, c.category_name, s.status_name, tt.tasktype_name, 
+SELECT  t.task_id, p.project_title, c.category_name, s.status_name, tt.tasktype_name,
         t.item_summary, t.detailed_desc,
-        t.date_opened, t.date_closed, t.last_edited_time, 
+        t.date_opened, t.date_closed, t.last_edited_time,
         uo.user_name AS opened_by_user,
         ua.user_name AS assigned_user,
         COUNT(cm.comment_id) AS comments_nb
@@ -69,8 +68,8 @@ csv.register_dialect('excel-fr', ExcelFr())
 # some function
 def db2csv(db: str, fly_id: str, year: int):
     # define export params
-    path_file_csv = join(PUB_PATH, f'exports/annual_csv/fly_{fly_id}_{year}.csv')
-    path_file_xlsx = join(PUB_PATH, f'exports/annual_xlsx/fly_{fly_id}_{year}.xlsx')
+    path_file_csv = join(PUB_PATH, f'annual_csv/fly_{fly_id}_{year}.csv')
+    path_file_xlsx = join(PUB_PATH, f'annual_xlsx/fly_{fly_id}_{year}.xlsx')
     sql_open_from_ts = round(datetime(year, 1, 1, 0, 0, 0).timestamp())
     sql_open_to_ts = round(datetime(year, 12, 31, 23, 59, 59).timestamp())
 
@@ -278,3 +277,4 @@ if __name__ == '__main__':
     while True:
         schedule.run_pending()
         time.sleep(1)
+

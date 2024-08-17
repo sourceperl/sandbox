@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-""" 
+"""
 Export data from flyspray to xlsx dashboards.
 
 """
@@ -46,9 +46,9 @@ class TaskInfo:
 # some function
 def build_dsh_open_tasks():
     SQL = """
-    SELECT  t.task_id, p.project_title, c.category_name, s.status_name, tt.tasktype_name, 
+    SELECT  t.task_id, p.project_title, c.category_name, s.status_name, tt.tasktype_name,
             t.item_summary, t.detailed_desc,
-            t.date_opened, t.date_closed, t.last_edited_time, 
+            t.date_opened, t.date_closed, t.last_edited_time,
             uo.user_name AS opened_by_user,
             ua.user_name AS assigned_user,
             COUNT(cm.comment_id) AS comments_nb
@@ -176,7 +176,7 @@ def build_dsh_open_tasks():
                                             showLastColumn=False, showRowStripes=True, showColumnStripes=False)
         sheet.add_table(tab)
         # save all to xlsx file
-        wb.save(filename=join(PUB_PATH, f'fly_all_open_tasks_board.xlsx'))
+        wb.save(filename=join(PUB_PATH, f'fly_all_open_tasks.xlsx'))
 
 
 # schedule job(s)
@@ -195,7 +195,7 @@ def dsh_open_tasks_job():
 if __name__ == '__main__':
     # parse command line args
     parser = argparse.ArgumentParser()
-    parser.add_argument('-r', '--rebuild', action='store_true', help='rebuild mode (from 2010 to now, then exit)')
+    parser.add_argument('-s', '--single-shot', action='store_true', help='run in single shot mode')
     args = parser.parse_args()
     # logging setup
     logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
@@ -203,10 +203,10 @@ if __name__ == '__main__':
     logging.getLogger('schedule').propagate = False
 
     # for rebuild purpose
-    if args.rebuild:
-        logging.info('force rebuild')
+    if args.single_shot:
+        logging.info('run in single shot mode')
         build_dsh_open_tasks()
-        logging.info('end of rebuild -> exit')
+        logging.info('exit')
         exit()
 
     # daemon mode start msg
@@ -220,3 +220,4 @@ if __name__ == '__main__':
     while True:
         schedule.run_pending()
         time.sleep(1)
+
