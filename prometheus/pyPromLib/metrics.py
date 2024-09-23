@@ -1,10 +1,13 @@
 """This module implement pyPromLib metrics class."""
 
-from enum import Enum
+import logging
 import re
 import time
+from enum import Enum
 from threading import Lock
-from typing import Any
+from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class MetricType(Enum):
@@ -46,7 +49,7 @@ class Metric:
         """Type of metric (read-only property)."""
         return self._type
 
-    def set(self, value: Any, labels_d: dict = None, ts: float = None, ttl: float = None):
+    def set(self, value: Any, labels_d: Optional[dict] = None, ts: Optional[float] = None, ttl: Optional[float] = None):
         """Set a value for the metric with labels set in a dict.
         timestamp
         We can remove it if value it set to None.
@@ -75,7 +78,7 @@ class Metric:
             else:
                 expire_at = (time.monotonic() + ttl) if ttl else None
                 self._values_d[labels_str] = (value, ts, expire_at)
-    
+
     def as_text(self) -> str:
         """Format the metric as Prometheus exposition format text."""
         txt = ''
@@ -138,8 +141,8 @@ class Metric:
             txt += f'{self.name}_count{self._lbl_f(lbl_id_str)} {b_count}\n'
             return txt
         except (IndexError, KeyError) as e:
-            # TODO after debug set "pass" here
-            print(e)
+            if e.__traceback__:
+                logger.warning(f'except occur: {e!r} at line {e.__traceback__.tb_lineno}')
             return ''
 
     def _data2txt_summary(self, lbl_id_str: str, sum_d: dict) -> str:
@@ -170,8 +173,8 @@ class Metric:
             txt += f'{self.name}_count{self._lbl_f(lbl_id_str)} {b_count}\n'
             return txt
         except (IndexError, KeyError) as e:
-            # TODO after debug set "pass" here
-            print(e)
+            if e.__traceback__:
+                logger.warning(f'except occur: {e!r} at line {e.__traceback__.tb_lineno}')
             return ''
 
     def _data2txt_default(self, lbl_id_str: str, value: Any, ts: int) -> str:
@@ -208,4 +211,3 @@ class Metric:
     def _lbl_f(lbl_s: str):
         """Format label string for export file lines."""
         return f'{{{lbl_s}}}' if lbl_s else ''
-
