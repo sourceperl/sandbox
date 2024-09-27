@@ -1,0 +1,5 @@
+# tensorflow requirement: add development files for Hierarchical Data Format 5 (HDF5)
+#     sudo apt install -y libhdf5-dev
+pillow==10.4.0
+schedule==1.2.2
+tensorflow==2.17.0
