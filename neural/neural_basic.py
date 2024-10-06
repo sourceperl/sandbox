@@ -24,7 +24,7 @@ out_data = np.array([[1],
 synapses = np.full((in_data.shape[1], 1), 0.0)
 
 # auto learn loop (fix weights for each synapse)
-for i in range(10000):
+for _ in range(10_000):
     # forward propagation
     l1 = sigmoid(np.dot(in_data, synapses))
 
@@ -38,11 +38,14 @@ for i in range(10000):
     # update weights
     synapses += np.dot(in_data.T, l1_delta)
 
-print("Synapses weights: %s" % list(synapses))
+print(f'Synapses weights: {list(synapses)}')
 
 print('')
 print('Results:')
-for i, (x0, x1, x2) in enumerate(in_data):
+for (x0, x1, x2), out in zip(in_data, out_data):
+    out_as_str = str(bool(out[0]))
     syn_sum = x0 * synapses[0] + x1 * synapses[1] + x2 * synapses[2]
-    print('%s %s %s = %s\tsyn. sum = %.4f\tprob. True = %.2f %%' % (x0, x1, x2, bool(out_data[i][0]),
-                                                                    syn_sum[0], sigmoid(syn_sum) * 100))
+    msg = f'{x0} {x1} {x2} = {out_as_str:<5s}    ' \
+          f'syn. sum = {syn_sum[0]:>8.4f}    ' \
+          f'prob. True = {sigmoid(syn_sum)[0] * 100:>6.2f} %'
+    print(msg)
