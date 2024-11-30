@@ -8,10 +8,27 @@ import math
 import tkinter as tk
 from tkinter import ttk
 
-
 # some const
-VL_POS_CV_MAP = [(0, 0), (4, 5), (10, 15), (16, 21), (20, 25), (30, 40), (40, 75), (50, 145), (53, 166), (60, 235),
-                 (70, 345), (80, 460), (90, 580), (100, 680)]
+VL_POS_CV_MAP = [(0.0, 0.0),
+                 (6.5, 0.0),
+                 (7.5, 0.6),
+                 (8.4, 3.0),
+                 (9.4, 3.3),
+                 (10.4, 3.6),
+                 (11.3, 5.8),
+                 (12.4, 6.6),
+                 (13.4, 6.8),
+                 (14.5, 8.2),
+                 (15.5, 11.9),
+                 (16.5, 17.6),
+                 (17.4, 25.9),
+                 (18.4, 32.8),
+                 (19.5, 41.0),
+                 (20.4, 49.5),
+                 (21.5, 55.9),
+                 (24.5, 80.3),
+                 (33.5, 153.0),
+                 (100.0, 625)]
 
 
 # some functions
@@ -25,7 +42,7 @@ def is_subsonic(p_up_bara: float, p_down_bara: float) -> bool:
     return p_down_bara > p_up_bara / 2
 
 
-def valve_flow(cv: float, p1_bara: float, p2_bara: float, t_deg_c: float = 6.0, sg: float = 0.554) -> float:
+def valve_flow(cv: float, p1_bara: float, p2_bara: float, t_deg_c: float = 8.0, sg: float = 0.610) -> float:
     """Compute flow rate (nm3/h) in a valve from it's Cv"""
     # check args value
     if p1_bara < 0.00:
@@ -45,7 +62,7 @@ def valve_flow(cv: float, p1_bara: float, p2_bara: float, t_deg_c: float = 6.0, 
         return sign * 0.471 * 417 * cv * p_up * math.sqrt(1 / (sg * t_k))
 
 
-def valve_cv(q_nm3: float, p1_bara: float, p2_bara: float, t_deg_c: float = 6.0, sg: float = 0.554) -> float:
+def valve_cv(q_nm3: float, p1_bara: float, p2_bara: float, t_deg_c: float = 8.0, sg: float = 0.610) -> float:
     """Compute Cv of a valve from it's flow rate (nm3/h)"""
     # check args value
     if q_nm3 < 0.00:
@@ -361,7 +378,7 @@ class HmiApp(tk.Tk):
         tk.Tk.__init__(self, *args, **kwargs)
         # configure main window
         self.wm_title('Calcul Cv vanne de régulation')
-        self.geometry('600x400')
+        self.geometry('800x600')
         self.resizable(width=False, height=False)
         # build a notebook with tabs
         self.note = ttk.Notebook(self)
