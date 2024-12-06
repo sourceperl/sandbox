@@ -2,8 +2,6 @@
 
 import math
 
-import numpy as np
-
 from .initialise import (
     initialise_an,
     initialise_bn,
@@ -239,7 +237,7 @@ class AGA8Detail:
         # reset ar @ 0 each call
         self.ar = [[0 for _ in range(4)] for _ in range(4)]
 
-        if np.abs(self.T - self.told) > 0.0000001:
+        if abs(self.T - self.told) > 0.0000001:
             for n in range(1, self.nterms + 1):
                 self.tun[n] = math.pow(self.T, (-1) * self.un[n])
 
@@ -396,7 +394,7 @@ class AGA8Detail:
 
     def density_detail(self):
         """Calculate density as a function of temperature, T and pressure, P. This is an iterative routine that calls PressureDetail()."""
-        if np.abs(self.P) < self.epsilon:
+        if abs(self.P) < self.epsilon:
             # failed to converge
             self.z = None
             self.P2 = None
@@ -442,7 +440,7 @@ class AGA8Detail:
                 dpdlv = -self.D * self.dpddsave  # d(p)/d[log(v)]
                 vdiff = (math.log(self.P2) - plog) * self.P2 / dpdlv
                 vlog = vlog - vdiff
-                if np.abs(vdiff) < self.tolr:
+                if abs(vdiff) < self.tolr:
                     # iteration converged
                     self.D = math.exp(-vlog)
                     self.ierr = 0
