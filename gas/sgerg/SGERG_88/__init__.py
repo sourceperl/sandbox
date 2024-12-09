@@ -31,7 +31,7 @@ from typing import Tuple
 
 # some const
 # thermal expansion coefficients Bxx (in m3/kmol if t in kelvin) of second virial coef B
-BC11H0 = [-0.425468, 0.286500e-2, -0.462073e-5]
+BC11H0 = [-4.254_68e-1, 2.865_00e-3, -4.620_73e-6]
 BC11H1 = [0.877118e-3, -0.556281e-5, 0.881510e-8]
 BC11H2 = [-0.824747e-6, 0.431436e-8, -0.608319e-11]
 BC14 = [-5.21280e-2, 2.71570e-4, -2.5e-7]
