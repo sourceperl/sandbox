@@ -85,6 +85,15 @@ echo "my_metric;tag1=value1 123" | nc -N localhost 2003
 
 ## Export and import
 
+### As native format (much faster)
+
+```bash
+# export all
+curl http://localhost:8428/api/v1/export/native -d 'match[]={__name__!=""}' > filename.bin
+# import
+curl -X POST http://localhost:8428/api/v1/import/native -T filename.bin
+```
+
 ### As a json list
 
 ```bash
@@ -96,6 +105,15 @@ curl -s http://127.0.0.1:8428/api/v1/export -d 'match[]={__name__!=""}' | gzip >
 curl -s http://127.0.0.1:8428/api/v1/import -T my_metric.jsonl
 # import a gzipped file
 curl -s -X POST -H 'Content-Encoding: gzip' http://127.0.0.1:8428/api/v1/import -T vm_full.jsonl.gz
+```
+
+### As a CSV
+
+```bash
+# export a specific metric
+curl -s http://127.0.0.1:8428/api/v1/export/csv -d 'match[]=my_metric' -d 'format=__name__,__value__,__timestamp__:rfc3339' > my_metric.csv
+# export all
+curl -s http://localhost:8428/api/v1/export/csv -d 'match[]={__name__!=""}' -d 'format=__name__,__value__,__timestamp__:rfc3339' > all.csv
 ```
 
 ## Delete a metric
