@@ -59,17 +59,17 @@ def test_gas3():
 def test_gas4():
     sgerg = SGERG(hs=34.16, d=0.599, x_co2=0.016, x_h2=0.095)
     # 60 bara
-    valid_sgerg(sgerg, p_bar=60.0, t_celsius=-3.15, z_ref=0.885_69, tolerance=0.2)
-    valid_sgerg(sgerg, p_bar=60.0, t_celsius=6.85, z_ref=0.901_50, tolerance=0.2)
-    valid_sgerg(sgerg, p_bar=60.0, t_celsius=16.85, z_ref=0.915_07, tolerance=0.2)
-    valid_sgerg(sgerg, p_bar=60.0, t_celsius=36.85, z_ref=0.936_84, tolerance=0.2)
-    valid_sgerg(sgerg, p_bar=60.0, t_celsius=56.85, z_ref=0.953_02, tolerance=0.2)
+    valid_sgerg(sgerg, p_bar=60.0, t_celsius=-3.15, z_ref=0.885_69, tolerance=0.01)
+    valid_sgerg(sgerg, p_bar=60.0, t_celsius=6.85, z_ref=0.901_50, tolerance=0.01)
+    valid_sgerg(sgerg, p_bar=60.0, t_celsius=16.85, z_ref=0.915_07, tolerance=0.01)
+    valid_sgerg(sgerg, p_bar=60.0, t_celsius=36.85, z_ref=0.936_84, tolerance=0.01)
+    valid_sgerg(sgerg, p_bar=60.0, t_celsius=56.85, z_ref=0.953_02, tolerance=0.01)
     # 120 bara
-    valid_sgerg(sgerg, p_bar=120.0, t_celsius=-3.15, z_ref=0.808_43, tolerance=0.5)
-    valid_sgerg(sgerg, p_bar=120.0, t_celsius=6.85, z_ref=0.836_13, tolerance=0.5)
-    valid_sgerg(sgerg, p_bar=120.0, t_celsius=16.85, z_ref=0.859_99, tolerance=0.5)
-    valid_sgerg(sgerg, p_bar=120.0, t_celsius=36.85, z_ref=0.898_27, tolerance=0.5)
-    valid_sgerg(sgerg, p_bar=120.0, t_celsius=56.85, z_ref=0.926_62, tolerance=0.5)
+    valid_sgerg(sgerg, p_bar=120.0, t_celsius=-3.15, z_ref=0.808_43, tolerance=0.01)
+    valid_sgerg(sgerg, p_bar=120.0, t_celsius=6.85, z_ref=0.836_13, tolerance=0.01)
+    valid_sgerg(sgerg, p_bar=120.0, t_celsius=16.85, z_ref=0.859_99, tolerance=0.01)
+    valid_sgerg(sgerg, p_bar=120.0, t_celsius=36.85, z_ref=0.898_27, tolerance=0.01)
+    valid_sgerg(sgerg, p_bar=120.0, t_celsius=56.85, z_ref=0.926_62, tolerance=0.01)
 
 
 def test_gas5():
