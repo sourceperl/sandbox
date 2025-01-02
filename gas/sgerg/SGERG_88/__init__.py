@@ -1,7 +1,4 @@
 """
-!!! WORK IN PROGRESS !!!
-
-
 Calculates the compression factor (z) and molar density (d) of a natural gas
 using a simplified gas analysis and the GERG-88 virial equation.
 
