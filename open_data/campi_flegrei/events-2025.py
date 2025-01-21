@@ -10,7 +10,7 @@ from dateutil.parser import parse, ParserError
 
 
 # some const
-DATA_URL = 'https://terremoti.ov.ingv.it/gossip/flegrei/2024/events.csv'
+DATA_URL = 'https://terremoti.ov.ingv.it/gossip/flegrei/2025/events.csv'
 
 
 try:
