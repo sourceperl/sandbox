@@ -114,3 +114,6 @@ lab/
 private_*
 *.xls
 *.xlsx
+
+# executable zip archives
+*.pyz
