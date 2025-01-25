@@ -37,7 +37,7 @@ if __name__ == '__main__':
     origin_path = Path(os.path.dirname(os.path.realpath(__file__)))
 
     # source path
-    src_path = Path('gui-app')
+    src_path = Path(origin_path / 'gui-app')
 
     # build app_info.txt in archive
     build_app_info(to_path=Path(src_path / 'app_info.txt'), app_name='gas-gui')
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     # build zipapp
     zipapp.create_archive(
         source=src_path,
-        target='app.pyz',
+        target=origin_path / 'app.pyz',
         interpreter='/usr/bin/env python',
         filter=in_zip,
         compressed=True,
