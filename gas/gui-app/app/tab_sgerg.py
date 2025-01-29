@@ -111,11 +111,11 @@ class TabSGERG(tk.Frame):
         ttk.Label(self.fm_met, text='°C').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # volume entry
         row += 1
-        ttk.Label(self.fm_met, text='Volume brut:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_met, text='Volume mesureur:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_vol = ttk.Entry(self.fm_met, textvariable=self.field_vol_raw,
                                  validate='key', validatecommand=v_float_cmd, width=10)
         self.ent_vol.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_met, text='m\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_met, text='m\u00b3 (brut)').grid(row=row, column=2, padx=5, pady=5, sticky='w')
 
         # compressibility factor frame
         self.fm_z = ttk.LabelFrame(self, text='Facteur de compressibilité')
@@ -153,7 +153,7 @@ class TabSGERG(tk.Frame):
         self.ent_c.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         # corrected flow entry
         row += 1
-        ttk.Label(self.fm_cor, text='Volume corrigé:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_cor, text='Volume de base:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_c_flow = ttk.Entry(self.fm_cor, textvariable=self.field_vol_cor, state='readonly', width=10)
         self.ent_c_flow.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_cor, text='nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')

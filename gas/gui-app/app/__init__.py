@@ -2,17 +2,18 @@ import argparse
 import tkinter as tk
 from tkinter import ttk
 
-
+from .__version__ import __version__
 from .conf import AppConf
-from .tab_sgerg import TabSGERG
 from .tab_aga8 import TabAGA8
-
+from .tab_sgerg import TabSGERG
 
 
 class App(tk.Tk):
     def __init__(self, app_conf: AppConf, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.title('EquaGaz')
+        # global tk conf
+        self.title(f'EquaGaz - V{__version__}')
+        self.resizable(width=False, height=False)
         # build a notebook with tabs
         self.note = ttk.Notebook(self)
         self.tab_sgerg = TabSGERG(self, app_conf)
