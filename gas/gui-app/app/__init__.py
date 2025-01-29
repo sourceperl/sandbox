@@ -12,7 +12,7 @@ from .tab_aga8 import TabAGA8
 class App(tk.Tk):
     def __init__(self, app_conf: AppConf, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.title('My App')
+        self.title('EquaGaz')
         # build a notebook with tabs
         self.note = ttk.Notebook(self)
         self.tab_sgerg = TabSGERG(self, app_conf)

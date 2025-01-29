@@ -25,11 +25,12 @@ class TabSGERG(tk.Frame):
         self.tk_app = master
         self.app_conf = app_conf
 
-        # style for red background
-        style = ttk.Style()
-        style.configure('Red.TEntry', fieldbackground='red')
+        # fix geometry of this frame
+        self.columnconfigure(0, minsize=400)
+        self.columnconfigure(1, minsize=350)
+        self.rowconfigure(0, minsize=250)
+        self.rowconfigure(1, minsize=150)
 
-        # create and place widgets
         # variables to store ttk.Entry IN values (with write handlers)
         self.field_pcs = tk.StringVar(value=f'{INIT_PCS}')
         self.field_pcs.trace_add('write', self._on_fields_update)
@@ -50,7 +51,6 @@ class TabSGERG(tk.Frame):
         self.field_z0 = tk.StringVar()
         self.field_z_z0 = tk.StringVar()
         self.field_z0_z = tk.StringVar()
-        self.field_rho_m = tk.StringVar()
         self.field_c_coef = tk.StringVar()
         self.field_vol_cor = tk.StringVar()
 
@@ -58,13 +58,14 @@ class TabSGERG(tk.Frame):
         v_int_cmd = (self.register(self._valid_int), '%P')
         v_float_cmd = (self.register(self._valid_float), '%P')
 
+        # create and place widgets
         # composition frame
         self.fm_comp = ttk.LabelFrame(self, text='Composition')
         self.fm_comp.grid(row=0, column=0, padx=5, pady=5, sticky=tk.NSEW)
         self.fm_comp.columnconfigure(0, minsize=160)
         # PCS entry
         row = 0
-        ttk.Label(self.fm_comp, text='PCS (à 0°C):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='PCS (à 0 °C):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_pcs = ttk.Entry(self.fm_comp, textvariable=self.field_pcs,
                                  validate='key', validatecommand=v_int_cmd, width=10)
         self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
@@ -116,54 +117,47 @@ class TabSGERG(tk.Frame):
         self.ent_vol.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_met, text='m\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
 
-        # results frame
-        self.fm_res = ttk.LabelFrame(self, text='Résultats')
-        self.fm_res.grid(row=0, rowspan=2, column=1, padx=5, pady=5, sticky=tk.NSEW)
-        self.fm_res.columnconfigure(0, minsize=100)
+        # compressibility factor frame
+        self.fm_z = ttk.LabelFrame(self, text='Facteur de compressibilité')
+        self.fm_z.grid(row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
+        self.fm_z.columnconfigure(0, minsize=125)
         # Z entry
         row = 0
-        ttk.Label(self.fm_res, text='Z:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_z = ttk.Entry(self.fm_res, textvariable=self.field_z, state='readonly', width=10)
+        ttk.Label(self.fm_z, text='Z:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_z = ttk.Entry(self.fm_z, textvariable=self.field_z, state='readonly', width=10)
         self.ent_z.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         # Z0 entry
         row += 1
-        ttk.Label(self.fm_res, text='Z0:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_z0 = ttk.Entry(self.fm_res, textvariable=self.field_z0, state='readonly', width=10)
+        ttk.Label(self.fm_z, text='Z0:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_z0 = ttk.Entry(self.fm_z, textvariable=self.field_z0, state='readonly', width=10)
         self.ent_z0.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         # Z/Z0 entry
         row += 1
-        ttk.Label(self.fm_res, text='Z/Z0:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_z_z0 = ttk.Entry(self.fm_res, textvariable=self.field_z_z0, state='readonly', width=10)
+        ttk.Label(self.fm_z, text='Z/Z0:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_z_z0 = ttk.Entry(self.fm_z, textvariable=self.field_z_z0, state='readonly', width=10)
         self.ent_z_z0.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         # Z0/Z entry
         row += 1
-        ttk.Label(self.fm_res, text='Z0/Z:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_z0_z = ttk.Entry(self.fm_res, textvariable=self.field_z0_z, state='readonly', width=10)
+        ttk.Label(self.fm_z, text='Z0/Z:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_z0_z = ttk.Entry(self.fm_z, textvariable=self.field_z0_z, state='readonly', width=10)
         self.ent_z0_z.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
-        # Rho m entry
-        row += 1
-        lbl = 'Densité molaire (\N{GREEK SMALL LETTER RHO}m):'
-        ttk.Label(self.fm_res, text=lbl).grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_rho_m = ttk.Entry(self.fm_res, textvariable=self.field_rho_m, state='readonly', width=10)
-        self.ent_rho_m.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_res, text='kmol/m\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
-        # vertical space
-        row += 1
-        ttk.Label(self.fm_res, text='').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+
+        # correction frame
+        self.fm_cor = ttk.LabelFrame(self, text='Correction')
+        self.fm_cor.grid(row=1, column=1, padx=5, pady=5, sticky=tk.NSEW)
+        self.fm_cor.columnconfigure(0, minsize=125)
         # C entry
-        row += 1
-        ttk.Label(self.fm_res, text='Coefficient C:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_c = ttk.Entry(self.fm_res, textvariable=self.field_c_coef, state='readonly', width=10)
+        row = 0
+        ttk.Label(self.fm_cor, text='Coefficient C:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_c = ttk.Entry(self.fm_cor, textvariable=self.field_c_coef, state='readonly', width=10)
         self.ent_c.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
-        # vertical space
-        # row += 1
-        # ttk.Label(self.fm_res, text='').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         # corrected flow entry
         row += 1
-        ttk.Label(self.fm_res, text='Volume corrigé:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_c_flow = ttk.Entry(self.fm_res, textvariable=self.field_vol_cor, state='readonly', width=10)
+        ttk.Label(self.fm_cor, text='Volume corrigé:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_c_flow = ttk.Entry(self.fm_cor, textvariable=self.field_vol_cor, state='readonly', width=10)
         self.ent_c_flow.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_res, text='nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_cor, text='nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+
         # first SGERG compute to update results widgets with default gas composition
         self._run_sgerg()
 
@@ -202,7 +196,7 @@ class TabSGERG(tk.Frame):
             hs_t25_mj = hs_to_mj(hs_t25)
             # do SGERG
             sgerg = SGERG(hs=hs_t25_mj, d=density, x_co2=x_co2, x_h2=x_h2)
-            z, rho_m = sgerg.run(p_bar=press_bar, t_celsius=temp_c)
+            z, _ = sgerg.run(p_bar=press_bar, t_celsius=temp_c)
             z0, _ = sgerg.run(p_bar=PRES_REF, t_celsius=TEMP_REF_C)
             c_coef = press_bar/PRES_REF * TEMP_REF_K/temp_k * z0/z
             # update result fields
@@ -210,7 +204,6 @@ class TabSGERG(tk.Frame):
             self.field_z0.set(f'{z0:.04f}')
             self.field_z_z0.set(f'{z/z0:.04f}')
             self.field_z0_z.set(f'{z0/z:.04f}')
-            self.field_rho_m.set(f'{rho_m:.04f}')
             self.field_c_coef.set(f'{c_coef:.04f}')
             self.field_vol_cor.set(f'{vol_raw * c_coef:_.0f}'.replace('_', ' '))
         except Exception:
@@ -219,7 +212,6 @@ class TabSGERG(tk.Frame):
             self.field_z0.set('n/a')
             self.field_z_z0.set('n/a')
             self.field_z0_z.set('n/a')
-            self.field_rho_m.set('n/a')
             self.field_c_coef.set('n/a')
             self.field_vol_cor.set('n/a')
             # debug
