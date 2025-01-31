@@ -2,7 +2,7 @@ import tkinter as tk
 import traceback
 from tkinter import ttk
 
-from sgerg.SGERG_88 import SGERG
+from SGERG_88 import SGERG
 
 from .conf import AppConf
 from .const import PRES_REF, TEMP_REF_C, TEMP_REF_K

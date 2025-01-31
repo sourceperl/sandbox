@@ -7,6 +7,9 @@ from datetime import datetime
 from pathlib import Path
 from shutil import copytree
 
+# some const
+ZIP_FILE = 'app.pyz'
+
 
 # get the last commit id from git command
 def last_commit_id() -> str:
@@ -27,8 +30,13 @@ def build_app_info(to_path: Path, app_name: str):
 
 # archive build filter
 def in_zip(path: Path) -> bool:
-    if path.name == '.gitignore':
+    # don't add the files or directories from the list to the zip file
+    if path.name in [ZIP_FILE, '__pycache__', '.gitignore', os.path.basename(__file__)]:
         return False
+    # also avoid to add files like 'package/__pycache__/*.pyc'
+    for ancestor in  path.parents:
+        if ancestor.name == '__pycache__':
+            return False
     return True
 
 
@@ -36,20 +44,17 @@ if __name__ == '__main__':
     # origin path
     origin_path = Path(os.path.dirname(os.path.realpath(__file__)))
 
-    # source path
-    src_path = Path(origin_path / 'gui-app')
-
     # build app_info.txt in archive
-    build_app_info(to_path=Path(src_path / 'app_info.txt'), app_name='gas-gui')
+    build_app_info(to_path=Path(origin_path / 'app_info.txt'), app_name='gas-gui')
 
     # copy the requirements
-    copytree(src=origin_path / 'aga8', dst=src_path / 'aga8', dirs_exist_ok=True)
-    copytree(src=origin_path / 'sgerg', dst=src_path / 'sgerg', dirs_exist_ok=True)
+    copytree(src=origin_path / '../aga8/AGA8', dst=origin_path / 'AGA8', dirs_exist_ok=True)
+    copytree(src=origin_path / '../sgerg/SGERG_88', dst=origin_path / 'SGERG_88', dirs_exist_ok=True)
 
     # build zipapp
     zipapp.create_archive(
-        source=src_path,
-        target=origin_path / 'app.pyz',
+        source=origin_path,
+        target=origin_path / ZIP_FILE,
         interpreter='/usr/bin/env python',
         filter=in_zip,
         compressed=True,

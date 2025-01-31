@@ -2,7 +2,7 @@ import tkinter as tk
 import traceback
 from tkinter import ttk
 
-from aga8.AGA8 import AGA8Detail
+from AGA8 import AGA8Detail
 
 from .conf import AppConf
 from .const import PRES_REF, TEMP_REF_C, TEMP_REF_K
