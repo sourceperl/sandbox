@@ -25,7 +25,7 @@ class App(tk.Tk):
         self.note.add(self.tab_pcs, text='ISO-6976 (PCS) (F3)')
         self.note.pack(fill=tk.BOTH, expand=True)
         # defaut selected tab
-        self.note.select(self.tab_sgerg)
+        self.note.select(self.tab_pcs)
         # bind function keys to tabs
         self.bind('<F1>', lambda evt: self.note.select(self.tab_sgerg))
         self.bind('<F2>', lambda evt: self.note.select(self.tab_aga8))
