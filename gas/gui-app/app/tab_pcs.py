@@ -20,17 +20,18 @@ INIT_IC5H12 = 0.09
 INIT_IC5H12 = 0.09
 INIT_NC6H14 = 0.01
 INIT_C6H14 = 0.01
-# INIT_N2 = 0.299
-# INIT_CO2 = 0.0
-# INIT_CH4 = 93.955
-# INIT_C2H6 = 4.929
-# INIT_C3H8 = 0.483
-# INIT_NC4H10 = 0.0
-# INIT_IC4H10 = 0.151
-# INIT_NC5H12 = 0.177
-# INIT_IC5H12 = 0.005
-# INIT_NC6H14 = 0.01
-# INIT_C6H14 = 0.01
+
+INIT_N2 = 0.299
+INIT_CO2 = 0.0
+INIT_CH4 = 93.955
+INIT_C2H6 = 4.929
+INIT_C3H8 = 0.483
+INIT_NC4H10 = 0.0
+INIT_IC4H10 = 0.151
+INIT_NC5H12 = 0.177
+INIT_IC5H12 = 0.005
+INIT_NC6H14 = 0.01
+INIT_C6H14 = 0.01
 
 
 class TabPCS(tk.Frame):
@@ -76,7 +77,7 @@ class TabPCS(tk.Frame):
         self.field_wobbe = tk.StringVar()
 
         # style for red background
-        style = ttk.Style()
+        style = ttk.Style(self)
         style.configure('Red.TEntry', fieldbackground='red')
 
         # add ttk.Entry widget commands for validation
@@ -292,20 +293,20 @@ class TabPCS(tk.Frame):
             pci_kj /= z0
             pci_wh = pci_kj / 3.6
             # compute density
-            density_sum = 0.9672 * x_n2 / 100
-            density_sum += 1.5195 * x_co2 / 100
-            density_sum += 0.5539 * x_ch4 / 100
-            density_sum += 1.0382 * x_c2h6 / 100
-            density_sum += 1.5224 * x_c3h8 / 100
-            density_sum += 2.0067 * x_nc4h10 / 100
-            density_sum += 2.491 * x_ic4h10 / 100
-            density_sum += 0.0 * x_nc5h12 / 100
-            density_sum += 0.0 * x_ic5h12 / 100
-            density_sum += 0.0 * x_nc6h14 / 100
+            density_sum = 0.967_2 * x_n2 / 100
+            density_sum += 1.519_5 * x_co2 / 100
+            density_sum += 0.553_9 * x_ch4 / 100
+            density_sum += 1.038_2 * x_c2h6 / 100
+            density_sum += 1.522_4 * x_c3h8 / 100
+            density_sum += 2.006_7 * x_nc4h10 / 100
+            density_sum += 2.006_7 * x_ic4h10 / 100
+            density_sum += 2.491 * x_nc5h12 / 100
+            density_sum += 2.491 * x_ic5h12 / 100
+            density_sum += 3.891 * x_nc6h14 / 100
             density_sum /= z0
             density = 0.999_41 * density_sum
             # compute wobbe
-            wobbe = pci_wh/sqrt(density)
+            wobbe = pcs_wh/sqrt(density)
             # update result fields
             self.field_zo.set(f'{z0:.04f}')
             self.field_pcs.set(f'{pcs_wh:.0f}')

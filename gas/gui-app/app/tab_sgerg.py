@@ -54,9 +54,13 @@ class TabSGERG(tk.Frame):
         self.field_c_coef = tk.StringVar()
         self.field_vol_cor = tk.StringVar()
 
+        # style for red background
+        style = ttk.Style(self)
+        style.configure('Red.TEntry', fieldbackground='red')
+
         # add ttk.Entry widget commands for validation
-        v_int_cmd = (self.register(self._valid_int), '%P')
-        v_float_cmd = (self.register(self._valid_float), '%P')
+        v_int_cmd = (self.register(self._valid_int), '%P', '%W')
+        v_float_cmd = (self.register(self._valid_float), '%P', '%W')
 
         # create and place widgets
         # composition frame
@@ -161,20 +165,29 @@ class TabSGERG(tk.Frame):
         # first SGERG compute to update results widgets with default gas composition
         self._run_sgerg()
 
-    def _valid_int(self, new_value: str):
-        if not new_value:
-            return True
+    def _valid_int(self, new_value: str, widget_name: str) -> bool:
         for char in new_value:
             if char not in '+0123456789':
                 return False
+        # validate numeric entry
+        try:
+            int(new_value)
+            self.nametowidget(widget_name).config(style='TEntry')
+        except ValueError:
+            self.nametowidget(widget_name).config(style='Red.TEntry')
         return True
 
-    def _valid_float(self, new_value: str):
-        if not new_value:
-            return True
+    def _valid_float(self, new_value: str, widget_name: str) -> bool:
+        # reject invalid char
         for char in new_value:
             if char not in '+-.0123456789':
                 return False
+        # validate numeric entry
+        try:
+            float(new_value)
+            self.nametowidget(widget_name).config(style='TEntry')
+        except ValueError:
+            self.nametowidget(widget_name).config(style='Red.TEntry')
         return True
 
     def _on_fields_update(self, *_args):
