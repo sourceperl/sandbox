@@ -4,8 +4,6 @@ from math import sqrt
 from tkinter import ttk
 
 from .conf import AppConf
-from .const import PRES_REF, TEMP_REF_C, TEMP_REF_K
-from .misc import to_kelvin
 
 # some local const
 INIT_N2 = 1.68
@@ -19,7 +17,7 @@ INIT_NC5H12 = 0.08
 INIT_IC5H12 = 0.09
 INIT_IC5H12 = 0.09
 INIT_NC6H14 = 0.01
-INIT_C6H14 = 0.01
+
 
 INIT_N2 = 0.299
 INIT_CO2 = 0.0
@@ -30,8 +28,7 @@ INIT_NC4H10 = 0.0
 INIT_IC4H10 = 0.151
 INIT_NC5H12 = 0.177
 INIT_IC5H12 = 0.005
-INIT_NC6H14 = 0.01
-INIT_C6H14 = 0.01
+INIT_NC6H14 = 0.00
 
 
 class TabPCS(ttk.Frame):
@@ -74,6 +71,7 @@ class TabPCS(ttk.Frame):
         self.field_pcs = tk.StringVar()
         self.field_pci = tk.StringVar()
         self.field_density = tk.StringVar()
+        self.field_rel_density = tk.StringVar()
         self.field_wobbe = tk.StringVar()
 
         # add ttk.Entry widget commands for validation
@@ -83,100 +81,93 @@ class TabPCS(ttk.Frame):
         # create and place widgets
         # composition frame
         self.fm_comp = ttk.LabelFrame(self, text='Composition en fraction molaire')
-        self.fm_comp.grid(row=0, column=0, padx=5, pady=5, sticky=tk.NSEW)
-        self.fm_comp.columnconfigure(0, minsize=75)
+        self.fm_comp.grid(row=0, rowspan=2, column=0, padx=5, pady=5, sticky=tk.NSEW)
+        self.fm_comp.columnconfigure(0, minsize=175)
         self.fm_comp.columnconfigure(2, minsize=40)
-        self.fm_comp.columnconfigure(3, minsize=75)
-        self.fm_comp.columnconfigure(5, minsize=40)
-        # n2 entry
+        # Nitrogen (N2) entry
         row = 0
-        ttk.Label(self.fm_comp, text='N2:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Azote (N2):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_h2 = ttk.Entry(self.fm_comp, textvariable=self.field_n2,
                                 validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_h2.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
-        # co2 entry
+        # Carbon dioxide (CO2) entry
         row += 1
-        ttk.Label(self.fm_comp, text='CO2:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Dioxyde de carbonne (CO2):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_co2 = ttk.Entry(self.fm_comp, textvariable=self.field_co2,
                                  validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_co2.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
-        # ch4 entry
+        # Methane (CH4) entry
         row += 1
-        ttk.Label(self.fm_comp, text='CH4:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Methane (CH4):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_ch4 = ttk.Entry(self.fm_comp, textvariable=self.field_ch4,
                                  validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_ch4.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
-        # c2h6 entry
+        # Ethane (C2H6) entry
         row += 1
-        ttk.Label(self.fm_comp, text='C2H6:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Ethane (C2H6):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_c2h6 = ttk.Entry(self.fm_comp, textvariable=self.field_c2h6,
                                   validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_c2h6.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
-        # c3h8 entry
+        # Propane (C3H8) entry
         row += 1
-        ttk.Label(self.fm_comp, text='C3H8:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Propane (C3H8):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_c3h8 = ttk.Entry(self.fm_comp, textvariable=self.field_c3h8,
                                   validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_c3h8.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
-        # nc4h10 entry
-        row = 0
-        ttk.Label(self.fm_comp, text='NC4H10:').grid(row=row, column=3, padx=5, pady=5, sticky='w')
+        # n-Butane (n-C4H10) entry
+        row += 1
+        ttk.Label(self.fm_comp, text='n-Butane (n-C4H10):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_nc4h10 = ttk.Entry(self.fm_comp, textvariable=self.field_nc4h10,
                                     validate='key', validatecommand=v_float_cmd, width=8)
-        self.ent_nc4h10.grid(row=row, column=4, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_comp, text='%').grid(row=row, column=5, padx=5, pady=5, sticky='w')
-        # ic4h10 entry
+        self.ent_nc4h10.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # Isobutane (2-Methylpropane i-C4H10) entry
         row += 1
-        ttk.Label(self.fm_comp, text='IC4H10:').grid(row=row, column=3, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Isobutane(i-C4H10):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_ic4h10 = ttk.Entry(self.fm_comp, textvariable=self.field_ic4h10,
                                     validate='key', validatecommand=v_float_cmd, width=8)
-        self.ent_ic4h10.grid(row=row, column=4, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_comp, text='%').grid(row=row, column=5, padx=5, pady=5, sticky='w')
-        # nc5h12 entry
+        self.ent_ic4h10.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # n-Pentane (n-c5h12) entry
         row += 1
-        ttk.Label(self.fm_comp, text='NC5H12:').grid(row=row, column=3, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='n-Pentane (n-C5H12):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_nc5h12 = ttk.Entry(self.fm_comp, textvariable=self.field_nc5h12,
                                     validate='key', validatecommand=v_float_cmd, width=8)
-        self.ent_nc5h12.grid(row=row, column=4, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_comp, text='%').grid(row=row, column=5, padx=5, pady=5, sticky='w')
-        # ic5h12 entry
+        self.ent_nc5h12.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # Isopentane (2-Methylbutane i-C5H12) entry
         row += 1
-        ttk.Label(self.fm_comp, text='IC5H12:').grid(row=row, column=3, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Isopentane (i-C5H12):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_ic5h12 = ttk.Entry(self.fm_comp, textvariable=self.field_ic5h12,
                                     validate='key', validatecommand=v_float_cmd, width=8)
-        self.ent_ic5h12.grid(row=row, column=4, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_comp, text='%').grid(row=row, column=5, padx=5, pady=5, sticky='w')
-        # nc6h14 entry
+        self.ent_ic5h12.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # n-Hexane (n-C6H14) entry
         row += 1
-        ttk.Label(self.fm_comp, text='NC6H14:').grid(row=row, column=3, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='n-Hexane (n-C6H14):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_nc6h14 = ttk.Entry(self.fm_comp, textvariable=self.field_nc6h14,
                                     validate='key', validatecommand=v_float_cmd, width=8)
-        self.ent_nc6h14.grid(row=row, column=4, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_comp, text='%').grid(row=row, column=5, padx=5, pady=5, sticky='w')
+        self.ent_nc6h14.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # sum entry
         row += 1
-        ttk.Label(self.fm_comp, text='Somme:').grid(row=row, column=3, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Somme:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_sum = ttk.Entry(self.fm_comp, textvariable=self.field_sum,
                                  validate='key', validatecommand=v_float_cmd, state='readonly', width=8)
-        self.ent_sum.grid(row=row, column=4, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_comp, text='%').grid(row=row, column=5, padx=5, pady=5, sticky='w')
+        self.ent_sum.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
 
         # compressibility factor frame
         self.fm_res = ttk.LabelFrame(self, text='Résultats (à 0°C)')
         self.fm_res.grid(row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
         self.fm_res.columnconfigure(0, minsize=125)
-        # Z0 entry
-        row = 0
-        ttk.Label(self.fm_res, text='Z0:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_zo, state='readonly', width=10)
-        self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         # PCS entry
-        row += 1
+        row = 0
         ttk.Label(self.fm_res, text='PCS:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_pcs, state='readonly', width=10)
         self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
@@ -185,15 +176,25 @@ class TabPCS(ttk.Frame):
         ttk.Label(self.fm_res, text='PCI:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_pci, state='readonly', width=10)
         self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
-        # density entry
-        row += 1
-        ttk.Label(self.fm_res, text='Densité:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_density, state='readonly', width=10)
-        self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         # wobbe entry
         row += 1
         ttk.Label(self.fm_res, text='Wobbe:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_wobbe, state='readonly', width=10)
+        self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        # density entry
+        row += 1
+        ttk.Label(self.fm_res, text='Masse volumique:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_density, state='readonly', width=10)
+        self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        # relative density entry
+        row += 1
+        ttk.Label(self.fm_res, text='Densité relative:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_rel_density, state='readonly', width=10)
+        self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        # Z0 entry
+        row += 1
+        ttk.Label(self.fm_res, text='Z0:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_zo, state='readonly', width=10)
         self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
 
         # first compute to update results widgets with default gas composition
@@ -289,31 +290,31 @@ class TabPCS(ttk.Frame):
             pci_kj /= z0
             pci_wh = pci_kj / 3.6
             # compute density
-            density_sum = 0.967_2 * x_n2 / 100
-            density_sum += 1.519_5 * x_co2 / 100
-            density_sum += 0.553_9 * x_ch4 / 100
-            density_sum += 1.038_2 * x_c2h6 / 100
-            density_sum += 1.522_4 * x_c3h8 / 100
-            density_sum += 2.006_7 * x_nc4h10 / 100
-            density_sum += 2.006_7 * x_ic4h10 / 100
-            density_sum += 2.491 * x_nc5h12 / 100
-            density_sum += 2.491 * x_ic5h12 / 100
-            density_sum += 3.891 * x_nc6h14 / 100
-            density_sum /= z0
-            density = 0.999_41 * density_sum
+            rel_density_sum = 0.967_2 * x_n2 / 100
+            rel_density_sum += 1.519_5 * x_co2 / 100
+            rel_density_sum += 0.553_9 * x_ch4 / 100
+            rel_density_sum += 1.038_2 * x_c2h6 / 100
+            rel_density_sum += 1.522_4 * x_c3h8 / 100
+            rel_density_sum += 2.006_7 * x_nc4h10 / 100
+            rel_density_sum += 2.006_7 * x_ic4h10 / 100
+            rel_density_sum += 2.491 * x_nc5h12 / 100
+            rel_density_sum += 2.491 * x_ic5h12 / 100
+            rel_density_sum += 3.891 * x_nc6h14 / 100
+            rel_density_sum /= z0
+            rel_density = 0.999_41 * rel_density_sum
             # compute wobbe
-            wobbe = pcs_wh/sqrt(density)
+            wobbe = pcs_wh/sqrt(rel_density)
             # update result fields
             self.field_zo.set(f'{z0:.04f}')
             self.field_pcs.set(f'{pcs_wh:.0f}')
             self.field_pci.set(f'{pci_wh:.0f}')
-            self.field_density.set(f'{density:.3f}')
+            self.field_rel_density.set(f'{rel_density:.3f}')
             self.field_wobbe.set(f'{wobbe:.0f}')
         except Exception:
             # mark fields as non-existent
             self.field_pcs.set('n/a')
             self.field_pci.set('n/a')
-            self.field_density.set('n/a')
+            self.field_rel_density.set('n/a')
             self.field_wobbe.set('n/a')
             # debug
             if self.app_conf.debug:
