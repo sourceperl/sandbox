@@ -69,7 +69,7 @@ class TabSGERG(ttk.Frame):
         self.ent_pcs = ttk.Entry(self.fm_comp, textvariable=self.field_pcs,
                                  validate='key', validatecommand=v_int_cmd, width=10)
         self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
-        ttk.Label(self.fm_comp, text='watts/m\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # density entry
         row += 1
         ttk.Label(self.fm_comp, text='Densité:').grid(row=row, column=0, padx=5, pady=5, sticky='w')

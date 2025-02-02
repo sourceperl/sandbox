@@ -164,28 +164,32 @@ class TabPCS(ttk.Frame):
 
         # compressibility factor frame
         self.fm_res = ttk.LabelFrame(self, text='Résultats (à 0°C)')
-        self.fm_res.grid(row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
+        self.fm_res.grid(row=0, rowspan=2, column=1, padx=5, pady=5, sticky=tk.NSEW)
         self.fm_res.columnconfigure(0, minsize=125)
         # PCS entry
         row = 0
         ttk.Label(self.fm_res, text='PCS:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_pcs, state='readonly', width=10)
         self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_res, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # PCI entry
         row += 1
         ttk.Label(self.fm_res, text='PCI:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_pci, state='readonly', width=10)
         self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_res, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # wobbe entry
         row += 1
         ttk.Label(self.fm_res, text='Wobbe:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_wobbe, state='readonly', width=10)
         self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_res, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # density entry
         row += 1
         ttk.Label(self.fm_res, text='Masse volumique:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_pcs = ttk.Entry(self.fm_res, textvariable=self.field_density, state='readonly', width=10)
         self.ent_pcs.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_res, text='kg/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # relative density entry
         row += 1
         ttk.Label(self.fm_res, text='Densité relative:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
@@ -261,7 +265,7 @@ class TabPCS(ttk.Frame):
             z_sum += 0.204_9 * x_ic4h10
             z_sum += 0.286_4 * x_nc5h12
             z_sum += 0.251_0 * x_ic5h12
-            z_sum += 0.328_6 * x_nc6h14
+            z_sum += 0.338_0 * x_nc6h14
             z0 = 1 - (z_sum/100)**2
             # compute PCS
             pcs_kj = 0 * x_n2 / 100
@@ -290,6 +294,18 @@ class TabPCS(ttk.Frame):
             pci_kj /= z0
             pci_wh = pci_kj / 3.6
             # compute density
+            density_sum = 1.249_8 * x_n2 / 100
+            density_sum += 1.963_5 * x_co2 / 100
+            density_sum += 0.715_7 * x_ch4 / 100
+            density_sum += 1.341_6 * x_c2h6 / 100
+            density_sum += 1.967_4 * x_c3h8 / 100
+            density_sum += 2.593_2 * x_nc4h10 / 100
+            density_sum += 2.593_2* x_ic4h10 / 100
+            density_sum += 3.219 * x_nc5h12 / 100
+            density_sum += 3.219 * x_ic5h12 / 100
+            density_sum += 3.891 * x_nc6h14 / 100
+            density = density_sum / z0
+            # compute relative density
             rel_density_sum = 0.967_2 * x_n2 / 100
             rel_density_sum += 1.519_5 * x_co2 / 100
             rel_density_sum += 0.553_9 * x_ch4 / 100
@@ -299,21 +315,22 @@ class TabPCS(ttk.Frame):
             rel_density_sum += 2.006_7 * x_ic4h10 / 100
             rel_density_sum += 2.491 * x_nc5h12 / 100
             rel_density_sum += 2.491 * x_ic5h12 / 100
-            rel_density_sum += 3.891 * x_nc6h14 / 100
-            rel_density_sum /= z0
-            rel_density = 0.999_41 * rel_density_sum
+            rel_density_sum += 3.011 * x_nc6h14 / 100
+            rel_density = 0.999_41 * rel_density_sum / z0
             # compute wobbe
             wobbe = pcs_wh/sqrt(rel_density)
             # update result fields
             self.field_zo.set(f'{z0:.04f}')
             self.field_pcs.set(f'{pcs_wh:.0f}')
             self.field_pci.set(f'{pci_wh:.0f}')
+            self.field_density.set(f'{density:.3f}')
             self.field_rel_density.set(f'{rel_density:.3f}')
             self.field_wobbe.set(f'{wobbe:.0f}')
         except Exception:
             # mark fields as non-existent
             self.field_pcs.set('n/a')
             self.field_pci.set('n/a')
+            self.field_density.set('n/a')
             self.field_rel_density.set('n/a')
             self.field_wobbe.set('n/a')
             # debug
