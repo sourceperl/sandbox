@@ -18,7 +18,7 @@ INIT_TEMP = 16.85
 INIT_RAW_VOL = 1000.0
 
 
-class TabSGERG(tk.Frame):
+class TabSGERG(ttk.Frame):
     def __init__(self, master: tk.Tk, app_conf: AppConf, *args, **kwargs) -> None:
         super().__init__(master, *args, **kwargs)
         # global tk app shortcuts
@@ -53,10 +53,6 @@ class TabSGERG(tk.Frame):
         self.field_z0_z = tk.StringVar()
         self.field_c_coef = tk.StringVar()
         self.field_vol_cor = tk.StringVar()
-
-        # style for red background
-        style = ttk.Style(self)
-        style.configure('Red.TEntry', fieldbackground='red')
 
         # add ttk.Entry widget commands for validation
         v_int_cmd = (self.register(self._valid_int), '%P', '%W')

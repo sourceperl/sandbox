@@ -34,7 +34,7 @@ INIT_NC6H14 = 0.01
 INIT_C6H14 = 0.01
 
 
-class TabPCS(tk.Frame):
+class TabPCS(ttk.Frame):
     def __init__(self, master: tk.Tk, app_conf: AppConf, *args, **kwargs) -> None:
         super().__init__(master, *args, **kwargs)
         # global tk app shortcuts
@@ -75,10 +75,6 @@ class TabPCS(tk.Frame):
         self.field_pci = tk.StringVar()
         self.field_density = tk.StringVar()
         self.field_wobbe = tk.StringVar()
-
-        # style for red background
-        style = ttk.Style(self)
-        style.configure('Red.TEntry', fieldbackground='red')
 
         # add ttk.Entry widget commands for validation
         # v_int_cmd = (self.register(self._valid_int), '%P', '%W')

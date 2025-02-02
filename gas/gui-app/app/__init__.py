@@ -5,8 +5,8 @@ from tkinter import ttk
 from .__version__ import __version__
 from .conf import AppConf
 from .tab_aga8 import TabAGA8
-from .tab_sgerg import TabSGERG
 from .tab_pcs import TabPCS
+from .tab_sgerg import TabSGERG
 
 
 class App(tk.Tk):
@@ -15,11 +15,16 @@ class App(tk.Tk):
         # global tk conf
         self.title(f'EquaGaz - V{__version__}')
         self.resizable(width=False, height=False)
+        # ensure global ttk style is default
+        self.style = ttk.Style()
+        self.style.theme_use('default')
+        # add a custom style for TEntry with syntax fault
+        self.style.configure('Red.TEntry', fieldbackground='red')
         # build a notebook with tabs
         self.note = ttk.Notebook(self)
         self.tab_sgerg = TabSGERG(self, app_conf)
         self.tab_aga8 = TabAGA8(self, app_conf)
-        self.tab_pcs  = TabPCS(self, app_conf)
+        self.tab_pcs = TabPCS(self, app_conf)
         self.note.add(self.tab_sgerg, text='SGERG (F1)')
         self.note.add(self.tab_aga8, text='AGA8 (F2)')
         self.note.add(self.tab_pcs, text='ISO-6976 (PCS) (F3)')
