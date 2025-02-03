@@ -5,8 +5,8 @@ from tkinter import ttk
 from SGERG_88 import SGERG
 
 from .conf import AppConf
-from .const import PRES_REF, TEMP_REF_C, TEMP_REF_K
-from .misc import hs_to_mj, hs_to_t25, to_kelvin
+from .const import PRES_REF_BAR, TEMP_REF_C, TEMP_REF_K
+from .misc import hs_to_mj, hs_to_t25, set_grid_conf, to_kelvin
 
 # some local const
 INIT_PCS = 11_540
@@ -25,11 +25,8 @@ class TabSGERG(ttk.Frame):
         self.tk_app = master
         self.app_conf = app_conf
 
-        # fix geometry of this frame
-        self.columnconfigure(0, minsize=400)
-        self.columnconfigure(1, minsize=350)
-        self.rowconfigure(0, minsize=250)
-        self.rowconfigure(1, minsize=150)
+        # uniform geometry for this frame
+        set_grid_conf(self)
 
         # variables to store ttk.Entry IN values (with write handlers)
         self.field_pcs = tk.StringVar(value=f'{INIT_PCS}')
@@ -206,8 +203,8 @@ class TabSGERG(ttk.Frame):
             # do SGERG
             sgerg = SGERG(hs=hs_t25_mj, d=density, x_co2=x_co2, x_h2=x_h2)
             z, _ = sgerg.run(p_bar=press_bar, t_celsius=temp_c)
-            z0, _ = sgerg.run(p_bar=PRES_REF, t_celsius=TEMP_REF_C)
-            c_coef = press_bar/PRES_REF * TEMP_REF_K/temp_k * z0/z
+            z0, _ = sgerg.run(p_bar=PRES_REF_BAR, t_celsius=TEMP_REF_C)
+            c_coef = press_bar/PRES_REF_BAR * TEMP_REF_K/temp_k * z0/z
             # update result fields
             self.field_z.set(f'{z:.04f}')
             self.field_z0.set(f'{z0:.04f}')

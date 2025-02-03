@@ -4,31 +4,22 @@ from math import sqrt
 from tkinter import ttk
 
 from .conf import AppConf
+from .const import M_AIR, PRES_REF_KPA, TEMP_REF_K, R
+from .misc import set_grid_conf
 
 # some local const
 INIT_N2 = 1.68
 INIT_CO2 = 0.69
+INIT_H2 = 0.0
 INIT_CH4 = 90.95
 INIT_C2H6 = 5.42
 INIT_C3H8 = 0.98
-INIT_NC4H10 = 0.05
-INIT_IC4H10 = 0.05
-INIT_NC5H12 = 0.08
-INIT_IC5H12 = 0.09
-INIT_IC5H12 = 0.09
-INIT_NC6H14 = 0.01
-
-
-INIT_N2 = 0.299
-INIT_CO2 = 0.0
-INIT_CH4 = 93.955
-INIT_C2H6 = 4.929
-INIT_C3H8 = 0.483
-INIT_NC4H10 = 0.0
-INIT_IC4H10 = 0.151
-INIT_NC5H12 = 0.177
-INIT_IC5H12 = 0.005
-INIT_NC6H14 = 0.00
+INIT_N_C4H10 = 0.05
+INIT_ISO_C4H10 = 0.05
+INIT_N_C5H12 = 0.08
+INIT_ISO_C5H12 = 0.09
+INIT_NEO_C5H12 = 0.0
+INIT_N_C6H14 = 0.01
 
 
 class TabPCS(ttk.Frame):
@@ -38,33 +29,34 @@ class TabPCS(ttk.Frame):
         self.tk_app = master
         self.app_conf = app_conf
 
-        # fix geometry of this frame
-        self.columnconfigure(0, minsize=400)
-        self.columnconfigure(1, minsize=350)
-        self.rowconfigure(0, minsize=250)
-        self.rowconfigure(1, minsize=150)
+        # uniform geometry for this frame
+        set_grid_conf(self)
 
         # variables to store ttk.Entry IN values (with write handlers)
         self.field_n2 = tk.StringVar(value=f'{INIT_N2:.3f}')
         self.field_n2.trace_add('write', self._on_fields_update)
         self.field_co2 = tk.StringVar(value=f'{INIT_CO2:.3f}')
         self.field_co2.trace_add('write', self._on_fields_update)
+        self.field_h2 = tk.StringVar(value=f'{INIT_H2:.3f}')
+        self.field_h2.trace_add('write', self._on_fields_update)
         self.field_ch4 = tk.StringVar(value=f'{INIT_CH4:.3f}')
         self.field_ch4.trace_add('write', self._on_fields_update)
         self.field_c2h6 = tk.StringVar(value=f'{INIT_C2H6:.3f}')
         self.field_c2h6.trace_add('write', self._on_fields_update)
         self.field_c3h8 = tk.StringVar(value=f'{INIT_C3H8:.3f}')
         self.field_c3h8.trace_add('write', self._on_fields_update)
-        self.field_nc4h10 = tk.StringVar(value=f'{INIT_NC4H10:.3f}')
+        self.field_nc4h10 = tk.StringVar(value=f'{INIT_N_C4H10:.3f}')
         self.field_nc4h10.trace_add('write', self._on_fields_update)
-        self.field_ic4h10 = tk.StringVar(value=f'{INIT_IC4H10:.3f}')
-        self.field_ic4h10.trace_add('write', self._on_fields_update)
-        self.field_nc5h12 = tk.StringVar(value=f'{INIT_NC5H12:.3f}')
-        self.field_nc5h12.trace_add('write', self._on_fields_update)
-        self.field_ic5h12 = tk.StringVar(value=f'{INIT_IC5H12:.3f}')
-        self.field_ic5h12.trace_add('write', self._on_fields_update)
-        self.field_nc6h14 = tk.StringVar(value=f'{INIT_NC6H14:.3f}')
-        self.field_nc6h14.trace_add('write', self._on_fields_update)
+        self.field_iso_c4h10 = tk.StringVar(value=f'{INIT_ISO_C4H10:.3f}')
+        self.field_iso_c4h10.trace_add('write', self._on_fields_update)
+        self.field_n_c5h12 = tk.StringVar(value=f'{INIT_N_C5H12:.3f}')
+        self.field_n_c5h12.trace_add('write', self._on_fields_update)
+        self.field_iso_c5h12 = tk.StringVar(value=f'{INIT_ISO_C5H12:.3f}')
+        self.field_iso_c5h12.trace_add('write', self._on_fields_update)
+        self.field_neo_c5h12 = tk.StringVar(value=f'{INIT_NEO_C5H12:.3f}')
+        self.field_neo_c5h12.trace_add('write', self._on_fields_update)
+        self.field_n_c6h14 = tk.StringVar(value=f'{INIT_N_C6H14:.3f}')
+        self.field_n_c6h14.trace_add('write', self._on_fields_update)
         # variables to store ttk.Entry OUT values
         self.field_sum = tk.StringVar()
         self.field_zo = tk.StringVar()
@@ -98,6 +90,13 @@ class TabPCS(ttk.Frame):
                                  validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_co2.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # Hydrogen (H2) entry
+        row += 1
+        ttk.Label(self.fm_comp, text='Hydrogène (H2):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_ch4 = ttk.Entry(self.fm_comp, textvariable=self.field_h2,
+                                 validate='key', validatecommand=v_float_cmd, width=8)
+        self.ent_ch4.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # Methane (CH4) entry
         row += 1
         ttk.Label(self.fm_comp, text='Methane (CH4):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
@@ -128,35 +127,42 @@ class TabPCS(ttk.Frame):
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # Isobutane (2-Methylpropane i-C4H10) entry
         row += 1
-        ttk.Label(self.fm_comp, text='Isobutane(i-C4H10):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_ic4h10 = ttk.Entry(self.fm_comp, textvariable=self.field_ic4h10,
+        ttk.Label(self.fm_comp, text='Isobutane (i-C4H10):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_ic4h10 = ttk.Entry(self.fm_comp, textvariable=self.field_iso_c4h10,
                                     validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_ic4h10.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # n-Pentane (n-c5h12) entry
         row += 1
         ttk.Label(self.fm_comp, text='n-Pentane (n-C5H12):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_nc5h12 = ttk.Entry(self.fm_comp, textvariable=self.field_nc5h12,
+        self.ent_nc5h12 = ttk.Entry(self.fm_comp, textvariable=self.field_n_c5h12,
                                     validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_nc5h12.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # Isopentane (2-Methylbutane i-C5H12) entry
         row += 1
         ttk.Label(self.fm_comp, text='Isopentane (i-C5H12):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_ic5h12 = ttk.Entry(self.fm_comp, textvariable=self.field_ic5h12,
+        self.ent_ic5h12 = ttk.Entry(self.fm_comp, textvariable=self.field_iso_c5h12,
+                                    validate='key', validatecommand=v_float_cmd, width=8)
+        self.ent_ic5h12.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # Neopentane (2,2-Dimethylpropane neo-C5H12) entry
+        row += 1
+        ttk.Label(self.fm_comp, text='Neopentane (neo-C5H12):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_ic5h12 = ttk.Entry(self.fm_comp, textvariable=self.field_neo_c5h12,
                                     validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_ic5h12.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # n-Hexane (n-C6H14) entry
         row += 1
         ttk.Label(self.fm_comp, text='n-Hexane (n-C6H14):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
-        self.ent_nc6h14 = ttk.Entry(self.fm_comp, textvariable=self.field_nc6h14,
+        self.ent_nc6h14 = ttk.Entry(self.fm_comp, textvariable=self.field_n_c6h14,
                                     validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_nc6h14.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # sum entry
         row += 1
-        ttk.Label(self.fm_comp, text='Somme:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_comp, text='Somme des constituants:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_sum = ttk.Entry(self.fm_comp, textvariable=self.field_sum,
                                  validate='key', validatecommand=v_float_cmd, state='readonly', width=8)
         self.ent_sum.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
@@ -239,17 +245,19 @@ class TabPCS(ttk.Frame):
                 # extract and format
                 x_n2 = float(self.field_n2.get())
                 x_co2 = float(self.field_co2.get())
+                x_h2 = float(self.field_h2.get())
                 x_ch4 = float(self.field_ch4.get())
                 x_c2h6 = float(self.field_c2h6.get())
                 x_c3h8 = float(self.field_c3h8.get())
-                x_ic4h10 = float(self.field_ic4h10.get())
-                x_nc4h10 = float(self.field_nc4h10.get())
-                x_ic5h12 = float(self.field_ic5h12.get())
-                x_nc5h12 = float(self.field_nc5h12.get())
-                x_nc6h14 = float(self.field_nc6h14.get())
+                x_iso_c4h10 = float(self.field_iso_c4h10.get())
+                x_n_c4h10 = float(self.field_nc4h10.get())
+                x_iso_c5h12 = float(self.field_iso_c5h12.get())
+                x_neo_c5h12 = float(self.field_neo_c5h12.get())
+                x_n_c5h12 = float(self.field_n_c5h12.get())
+                x_n_c6h14 = float(self.field_n_c6h14.get())
                 # update sum
-                x_sum = x_ch4 + x_n2 + x_co2 + x_c2h6 + x_c3h8
-                x_sum += x_ic4h10 + x_nc4h10 + x_ic5h12 + x_nc5h12 + x_nc6h14
+                x_sum = + x_n2 + x_co2 + x_h2 + x_ch4 + x_c2h6 + x_c3h8
+                x_sum += x_iso_c4h10 + x_n_c4h10 + x_iso_c5h12 + x_n_c5h12 + x_neo_c5h12 + x_n_c6h14
                 self.field_sum.set(f'{x_sum:.02f}')
             except ValueError:
                 # unable to compute sum
@@ -258,76 +266,88 @@ class TabPCS(ttk.Frame):
             # compute Z0: apply weights to every components
             z_sum = 0.022_4 * x_n2
             z_sum += 0.081_9 * x_co2
+            z_sum += -0.004_0 * x_h2
             z_sum += 0.049_0 * x_ch4
             z_sum += 0.100_0 * x_c2h6
             z_sum += 0.145_3 * x_c3h8
-            z_sum += 0.206_9 * x_nc4h10
-            z_sum += 0.204_9 * x_ic4h10
-            z_sum += 0.286_4 * x_nc5h12
-            z_sum += 0.251_0 * x_ic5h12
-            z_sum += 0.338_0 * x_nc6h14
+            z_sum += 0.206_9 * x_n_c4h10
+            z_sum += 0.204_9 * x_iso_c4h10
+            z_sum += 0.286_4 * x_n_c5h12
+            z_sum += 0.251_0 * x_iso_c5h12
+            z_sum += 0.238_7 * x_neo_c5h12
+            z_sum += 0.328_6 * x_n_c6h14
             z0 = 1 - (z_sum/100)**2
             # compute PCS
-            pcs_kj = 0 * x_n2 / 100
-            pcs_kj += 0 * x_co2 / 100
-            pcs_kj += 39_840 * x_ch4 / 100
-            pcs_kj += 69_790 * x_c2h6 / 100
-            pcs_kj += 99_220 * x_c3h8 / 100
-            pcs_kj += 128_660 * x_nc4h10 / 100
-            pcs_kj += 128_230 * x_ic4h10 / 100
-            pcs_kj += 158_070 * x_nc5h12 / 100
-            pcs_kj += 157_760 * x_ic5h12 / 100
-            pcs_kj += 187_530 * x_nc6h14 / 100
-            pcs_kj /= z0
+            pcs_kj_sum = 0 * x_n2
+            pcs_kj_sum += 0 * x_co2
+            pcs_kj_sum += 12_788 * x_h2
+            pcs_kj_sum += 39_840 * x_ch4
+            pcs_kj_sum += 69_790 * x_c2h6
+            pcs_kj_sum += 99_220 * x_c3h8
+            pcs_kj_sum += 128_660 * x_n_c4h10
+            pcs_kj_sum += 128_230 * x_iso_c4h10
+            pcs_kj_sum += 158_070 * x_n_c5h12
+            pcs_kj_sum += 157_760 * x_iso_c5h12
+            pcs_kj_sum += 157_120 * x_neo_c5h12
+            pcs_kj_sum += 187_530 * x_n_c6h14
+            pcs_kj = (pcs_kj_sum/100) / z0
             pcs_wh = pcs_kj / 3.6
             # compute PCI
-            pci_kj = 0 * x_n2 / 100
-            pci_kj += 0 * x_co2 / 100
-            pci_kj += 35_818 * x_ch4 / 100
-            pci_kj += 63_760 * x_c2h6 / 100
-            pci_kj += 91_180 * x_c3h8 / 100
-            pci_kj += 118_610 * x_nc4h10 / 100
-            pci_kj += 118_180 * x_ic4h10 / 100
-            pci_kj += 146_000 * x_nc5h12 / 100
-            pci_kj += 145_690 * x_ic5h12 / 100
-            pci_kj += 173_450 * x_nc6h14 / 100
-            pci_kj /= z0
+            pci_kj_sum = 0 * x_n2
+            pci_kj_sum += 0 * x_co2
+            pci_kj_sum += 10_777 * x_h2
+            pci_kj_sum += 35_818 * x_ch4
+            pci_kj_sum += 63_760 * x_c2h6
+            pci_kj_sum += 91_180 * x_c3h8
+            pci_kj_sum += 118_610 * x_n_c4h10
+            pci_kj_sum += 118_180 * x_iso_c4h10
+            pci_kj_sum += 146_000 * x_n_c5h12
+            pci_kj_sum += 145_690 * x_iso_c5h12
+            pci_kj_sum += 145_060 * x_neo_c5h12
+            pci_kj_sum += 173_450 * x_n_c6h14
+            pci_kj = (pci_kj_sum/100) / z0
             pci_wh = pci_kj / 3.6
             # compute density
-            density_sum = 1.249_8 * x_n2 / 100
-            density_sum += 1.963_5 * x_co2 / 100
-            density_sum += 0.715_7 * x_ch4 / 100
-            density_sum += 1.341_6 * x_c2h6 / 100
-            density_sum += 1.967_4 * x_c3h8 / 100
-            density_sum += 2.593_2 * x_nc4h10 / 100
-            density_sum += 2.593_2* x_ic4h10 / 100
-            density_sum += 3.219 * x_nc5h12 / 100
-            density_sum += 3.219 * x_ic5h12 / 100
-            density_sum += 3.891 * x_nc6h14 / 100
-            density = density_sum / z0
+            d_comp_coef = PRES_REF_KPA/(R*TEMP_REF_K)
+            density_sum = 28.013_5 * d_comp_coef * x_n2
+            density_sum += 44.010 * d_comp_coef * x_co2
+            density_sum += 2.015_9 * d_comp_coef * x_h2
+            density_sum += 16.043 * d_comp_coef * x_ch4
+            density_sum += 30.070 * d_comp_coef * x_c2h6
+            density_sum += 44.097 * d_comp_coef * x_c3h8
+            density_sum += 58.123 * d_comp_coef * x_n_c4h10
+            density_sum += 58.123 * d_comp_coef * x_iso_c4h10
+            density_sum += 72.150 * d_comp_coef * x_n_c5h12
+            density_sum += 72.150 * d_comp_coef * x_iso_c5h12
+            density_sum += 72.150 * d_comp_coef * x_neo_c5h12
+            density_sum += 86.177 * d_comp_coef * x_n_c6h14
+            density = (density_sum/100) / z0
             # compute relative density
-            rel_density_sum = 0.967_2 * x_n2 / 100
-            rel_density_sum += 1.519_5 * x_co2 / 100
-            rel_density_sum += 0.553_9 * x_ch4 / 100
-            rel_density_sum += 1.038_2 * x_c2h6 / 100
-            rel_density_sum += 1.522_4 * x_c3h8 / 100
-            rel_density_sum += 2.006_7 * x_nc4h10 / 100
-            rel_density_sum += 2.006_7 * x_ic4h10 / 100
-            rel_density_sum += 2.491 * x_nc5h12 / 100
-            rel_density_sum += 2.491 * x_ic5h12 / 100
-            rel_density_sum += 3.011 * x_nc6h14 / 100
-            rel_density = 0.999_41 * rel_density_sum / z0
+            rel_density_sum = (28.013_5 / M_AIR) * x_n2
+            rel_density_sum += (44.010 / M_AIR) * x_co2
+            rel_density_sum += (2.015_9 / M_AIR) * x_h2
+            rel_density_sum += (16.043 / M_AIR) * x_ch4
+            rel_density_sum += (30.070 / M_AIR) * x_c2h6
+            rel_density_sum += (44.097 / M_AIR) * x_c3h8
+            rel_density_sum += (58.123 / M_AIR) * x_n_c4h10
+            rel_density_sum += (58.123 / M_AIR) * x_iso_c4h10
+            rel_density_sum += (72.150/ M_AIR) * x_n_c5h12
+            rel_density_sum += (72.150/ M_AIR) * x_iso_c5h12
+            rel_density_sum += (72.150/ M_AIR) * x_neo_c5h12
+            rel_density_sum += (86.177/ M_AIR) * x_n_c6h14
+            rel_density = 0.999_41 * (rel_density_sum/100) / z0
             # compute wobbe
             wobbe = pcs_wh/sqrt(rel_density)
             # update result fields
             self.field_zo.set(f'{z0:.04f}')
             self.field_pcs.set(f'{pcs_wh:.0f}')
             self.field_pci.set(f'{pci_wh:.0f}')
-            self.field_density.set(f'{density:.3f}')
+            self.field_density.set(f'{density:.4f}')
             self.field_rel_density.set(f'{rel_density:.3f}')
             self.field_wobbe.set(f'{wobbe:.0f}')
         except Exception:
             # mark fields as non-existent
+            self.field_zo.set('n/a')
             self.field_pcs.set('n/a')
             self.field_pci.set('n/a')
             self.field_density.set('n/a')

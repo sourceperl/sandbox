@@ -1,3 +1,6 @@
+from tkinter import ttk
+
+
 # some functions
 def hs_to_mj(hs_kwh: float) -> float:
     """Convert Hs from kwh/nm3 to MJ/nm3."""
@@ -17,3 +20,11 @@ def to_kelvin(celsius: float) -> float:
 def to_celsius(kelvin: float) -> float:
     """Converts temperature from Kelvin to Celsius."""
     return kelvin - 273.15
+
+
+def set_grid_conf(widget: ttk.Frame) -> None:
+    """Apply global geometry to this frame (maintain uniform geometry across the entire frame)."""
+    widget.columnconfigure(0, minsize=400)
+    widget.columnconfigure(1, minsize=350)
+    widget.rowconfigure(0, minsize=250)
+    widget.rowconfigure(1, minsize=200)

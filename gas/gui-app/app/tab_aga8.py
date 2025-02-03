@@ -5,8 +5,8 @@ from tkinter import ttk
 from AGA8 import AGA8Detail
 
 from .conf import AppConf
-from .const import PRES_REF, TEMP_REF_C, TEMP_REF_K
-from .misc import to_kelvin
+from .const import PRES_REF_BAR, TEMP_REF_C, TEMP_REF_K
+from .misc import set_grid_conf, to_kelvin
 
 # some local const
 INIT_DENSITY = 0.610
@@ -34,11 +34,8 @@ class TabAGA8(ttk.Frame):
         self.tk_app = master
         self.app_conf = app_conf
 
-        # fix geometry of this frame
-        self.columnconfigure(0, minsize=400)
-        self.columnconfigure(1, minsize=350)
-        self.rowconfigure(0, minsize=250)
-        self.rowconfigure(1, minsize=150)
+        # uniform geometry for this frame
+        set_grid_conf(self)
 
         # variables to store ttk.Entry IN values (with write handlers)
         self.field_n2 = tk.StringVar(value=f'{INIT_N2:.2f}')
@@ -319,12 +316,12 @@ class TabAGA8(ttk.Frame):
             ]
             # use AGA8Detail class
             aga8_detail = AGA8Detail(p_bara=press_bar, t_celsius=temp_c, x=x).run()
-            aga8_detail_ref = AGA8Detail(p_bara=PRES_REF, t_celsius=TEMP_REF_C, x=x).run()
+            aga8_detail_ref = AGA8Detail(p_bara=PRES_REF_BAR, t_celsius=TEMP_REF_C, x=x).run()
             if aga8_detail.z is None or aga8_detail_ref.z is None:
                 raise ValueError
             z = aga8_detail.z
             z0 = aga8_detail_ref.z
-            c_coef = press_bar/PRES_REF * TEMP_REF_K/temp_k * z0/z
+            c_coef = press_bar/PRES_REF_BAR * TEMP_REF_K/temp_k * z0/z
             # update result fields
             self.field_z.set(f'{z:.04f}')
             self.field_z0.set(f'{z0:.04f}')
