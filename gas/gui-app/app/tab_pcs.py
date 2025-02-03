@@ -1,12 +1,10 @@
 import tkinter as tk
 import traceback
-from math import sqrt
 from tkinter import ttk
 
 from ISO_6976 import ISO_6976
 
 from .conf import AppConf
-from .const import M_AIR, PRES_REF_KPA, TEMP_REF_K, R
 from .misc import set_grid_conf
 
 # some local const
@@ -255,114 +253,33 @@ class TabPCS(ttk.Frame):
             # manage gas composition fields
             try:
                 # extract and format
-                x_n2 = float(self.field_n2.get())
-                x_o2 = float(self.field_o2.get())
-                x_co2 = float(self.field_co2.get())
-                x_h2 = float(self.field_h2.get())
-                x_ch4 = float(self.field_ch4.get())
-                x_c2h6 = float(self.field_c2h6.get())
-                x_c3h8 = float(self.field_c3h8.get())
-                x_iso_c4h10 = float(self.field_iso_c4h10.get())
-                x_n_c4h10 = float(self.field_nc4h10.get())
-                x_iso_c5h12 = float(self.field_iso_c5h12.get())
-                x_n_c5h12 = float(self.field_n_c5h12.get())
-                x_neo_c5h12 = float(self.field_neo_c5h12.get())
-                x_n_c6h14 = float(self.field_n_c6h14.get())
-                # update sum
-                x_sum = x_n2 + x_o2 + x_co2 + x_h2 + x_ch4 + x_c2h6 + x_c3h8
-                x_sum += x_iso_c4h10 + x_n_c4h10 + x_iso_c5h12 + x_n_c5h12 + x_neo_c5h12 + x_n_c6h14
-                self.field_sum.set(f'{x_sum:.02f}')
+                iso_6976 = ISO_6976(x_as_ratio=False,
+                                    x_n2=float(self.field_n2.get()),
+                                    x_o2=float(self.field_o2.get()),
+                                    x_co2=float(self.field_co2.get()),
+                                    x_h2=float(self.field_h2.get()),
+                                    x_ch4=float(self.field_ch4.get()),
+                                    x_c2h6=float(self.field_c2h6.get()),
+                                    x_c3h8=float(self.field_c3h8.get()),
+                                    x_iso_c4h10=float(self.field_iso_c4h10.get()),
+                                    x_n_c4h10=float(self.field_nc4h10.get()),
+                                    x_iso_c5h12=float(self.field_iso_c5h12.get()),
+                                    x_n_c5h12=float(self.field_n_c5h12.get()),
+                                    x_neo_c5h12=float(self.field_neo_c5h12.get()),
+                                    x_n_c6h14=float(self.field_n_c6h14.get()),
+                                    )
+                self.field_sum.set(f'{iso_6976.x_sum:.02f}')
             except ValueError:
                 # unable to compute sum
                 self.field_sum.set('n/a')
                 raise ValueError
-            # compute Z0: apply weights to every components
-            z_sum = 0.022_4 * x_n2
-            z_sum += 0.031_6 * x_o2
-            z_sum += 0.081_9 * x_co2
-            z_sum += -0.004_0 * x_h2
-            z_sum += 0.049_0 * x_ch4
-            z_sum += 0.100_0 * x_c2h6
-            z_sum += 0.145_3 * x_c3h8
-            z_sum += 0.206_9 * x_n_c4h10
-            z_sum += 0.204_9 * x_iso_c4h10
-            z_sum += 0.286_4 * x_n_c5h12
-            z_sum += 0.251_0 * x_iso_c5h12
-            z_sum += 0.238_7 * x_neo_c5h12
-            z_sum += 0.328_6 * x_n_c6h14
-            z0 = 1 - (z_sum/100)**2
-            # compute PCS
-            pcs_kj_sum = 0 * x_n2
-            pcs_kj_sum += 0 * x_o2
-            pcs_kj_sum += 0 * x_co2
-            pcs_kj_sum += 12_788 * x_h2
-            pcs_kj_sum += 39_840 * x_ch4
-            pcs_kj_sum += 69_790 * x_c2h6
-            pcs_kj_sum += 99_220 * x_c3h8
-            pcs_kj_sum += 128_660 * x_n_c4h10
-            pcs_kj_sum += 128_230 * x_iso_c4h10
-            pcs_kj_sum += 158_070 * x_n_c5h12
-            pcs_kj_sum += 157_760 * x_iso_c5h12
-            pcs_kj_sum += 157_120 * x_neo_c5h12
-            pcs_kj_sum += 187_530 * x_n_c6h14
-            pcs_kj = (pcs_kj_sum/100) / z0
-            pcs_wh = pcs_kj / 3.6
-            # compute PCI
-            pci_kj_sum = 0 * x_n2
-            pci_kj_sum += 0 * x_o2
-            pci_kj_sum += 0 * x_co2
-            pci_kj_sum += 10_777 * x_h2
-            pci_kj_sum += 35_818 * x_ch4
-            pci_kj_sum += 63_760 * x_c2h6
-            pci_kj_sum += 91_180 * x_c3h8
-            pci_kj_sum += 118_610 * x_n_c4h10
-            pci_kj_sum += 118_180 * x_iso_c4h10
-            pci_kj_sum += 146_000 * x_n_c5h12
-            pci_kj_sum += 145_690 * x_iso_c5h12
-            pci_kj_sum += 145_060 * x_neo_c5h12
-            pci_kj_sum += 173_450 * x_n_c6h14
-            pci_kj = (pci_kj_sum/100) / z0
-            pci_wh = pci_kj / 3.6
-            # compute density
-            d_comp_coef = PRES_REF_KPA/(R*TEMP_REF_K)
-            density_sum = 28.013_5 * d_comp_coef * x_n2
-            density_sum += 31.998_8 * d_comp_coef * x_o2
-            density_sum += 44.010 * d_comp_coef * x_co2
-            density_sum += 2.015_9 * d_comp_coef * x_h2
-            density_sum += 16.043 * d_comp_coef * x_ch4
-            density_sum += 30.070 * d_comp_coef * x_c2h6
-            density_sum += 44.097 * d_comp_coef * x_c3h8
-            density_sum += 58.123 * d_comp_coef * x_n_c4h10
-            density_sum += 58.123 * d_comp_coef * x_iso_c4h10
-            density_sum += 72.150 * d_comp_coef * x_n_c5h12
-            density_sum += 72.150 * d_comp_coef * x_iso_c5h12
-            density_sum += 72.150 * d_comp_coef * x_neo_c5h12
-            density_sum += 86.177 * d_comp_coef * x_n_c6h14
-            density = (density_sum/100) / z0
-            # compute relative density
-            rel_density_sum = (28.013_5 / M_AIR) * x_n2
-            rel_density_sum += (31.998_8 / M_AIR) * x_o2
-            rel_density_sum += (44.010 / M_AIR) * x_co2
-            rel_density_sum += (2.015_9 / M_AIR) * x_h2
-            rel_density_sum += (16.043 / M_AIR) * x_ch4
-            rel_density_sum += (30.070 / M_AIR) * x_c2h6
-            rel_density_sum += (44.097 / M_AIR) * x_c3h8
-            rel_density_sum += (58.123 / M_AIR) * x_n_c4h10
-            rel_density_sum += (58.123 / M_AIR) * x_iso_c4h10
-            rel_density_sum += (72.150 / M_AIR) * x_n_c5h12
-            rel_density_sum += (72.150 / M_AIR) * x_iso_c5h12
-            rel_density_sum += (72.150 / M_AIR) * x_neo_c5h12
-            rel_density_sum += (86.177 / M_AIR) * x_n_c6h14
-            rel_density = 0.999_41 * (rel_density_sum/100) / z0
-            # compute wobbe
-            wobbe = pcs_wh/sqrt(rel_density)
             # update result fields
-            self.field_zo.set(f'{z0:.04f}')
-            self.field_pcs.set(f'{pcs_wh:.0f}')
-            self.field_pci.set(f'{pci_wh:.0f}')
-            self.field_density.set(f'{density:.4f}')
-            self.field_rel_density.set(f'{rel_density:.3f}')
-            self.field_wobbe.set(f'{wobbe:.0f}')
+            self.field_zo.set(f'{iso_6976.z0:.04f}')
+            self.field_pcs.set(f'{iso_6976.hhv_wh:.0f}')
+            self.field_pci.set(f'{iso_6976.lhv_wh:.0f}')
+            self.field_density.set(f'{iso_6976.density:.4f}')
+            self.field_rel_density.set(f'{iso_6976.rel_density:.3f}')
+            self.field_wobbe.set(f'{iso_6976.wobbe:.0f}')
         except Exception:
             # mark fields as non-existent
             self.field_zo.set('n/a')
