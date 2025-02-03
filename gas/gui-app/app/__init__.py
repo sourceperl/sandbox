@@ -14,7 +14,7 @@ class App(tk.Tk):
         super().__init__(*args, **kwargs)
         # global tk conf
         self.title(f'EquaGaz - V{__version__}')
-        self.geometry('800x600')
+        self.geometry('800x525')
         self.resizable(width=False, height=False)
         # ensure global ttk style is default
         self.style = ttk.Style()

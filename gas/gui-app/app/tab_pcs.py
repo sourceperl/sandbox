@@ -9,6 +9,7 @@ from .misc import set_grid_conf
 
 # some local const
 INIT_N2 = 1.68
+INIT_O2 = 0.0
 INIT_CO2 = 0.69
 INIT_H2 = 0.0
 INIT_CH4 = 90.95
@@ -35,6 +36,8 @@ class TabPCS(ttk.Frame):
         # variables to store ttk.Entry IN values (with write handlers)
         self.field_n2 = tk.StringVar(value=f'{INIT_N2:.3f}')
         self.field_n2.trace_add('write', self._on_fields_update)
+        self.field_o2 = tk.StringVar(value=f'{INIT_O2:.3f}')
+        self.field_o2.trace_add('write', self._on_fields_update)
         self.field_co2 = tk.StringVar(value=f'{INIT_CO2:.3f}')
         self.field_co2.trace_add('write', self._on_fields_update)
         self.field_h2 = tk.StringVar(value=f'{INIT_H2:.3f}')
@@ -82,6 +85,13 @@ class TabPCS(ttk.Frame):
         self.ent_h2 = ttk.Entry(self.fm_comp, textvariable=self.field_n2,
                                 validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_h2.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # Oxygen (O2) entry
+        row += 1
+        ttk.Label(self.fm_comp, text='Oxygène (O2):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_co2 = ttk.Entry(self.fm_comp, textvariable=self.field_o2,
+                                 validate='key', validatecommand=v_float_cmd, width=8)
+        self.ent_co2.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # Carbon dioxide (CO2) entry
         row += 1
@@ -244,6 +254,7 @@ class TabPCS(ttk.Frame):
             try:
                 # extract and format
                 x_n2 = float(self.field_n2.get())
+                x_o2 = float(self.field_o2.get())
                 x_co2 = float(self.field_co2.get())
                 x_h2 = float(self.field_h2.get())
                 x_ch4 = float(self.field_ch4.get())
@@ -265,6 +276,7 @@ class TabPCS(ttk.Frame):
                 raise ValueError
             # compute Z0: apply weights to every components
             z_sum = 0.022_4 * x_n2
+            z_sum += 0.031_6 * x_o2
             z_sum += 0.081_9 * x_co2
             z_sum += -0.004_0 * x_h2
             z_sum += 0.049_0 * x_ch4
@@ -279,6 +291,7 @@ class TabPCS(ttk.Frame):
             z0 = 1 - (z_sum/100)**2
             # compute PCS
             pcs_kj_sum = 0 * x_n2
+            pcs_kj_sum += 0 * x_o2
             pcs_kj_sum += 0 * x_co2
             pcs_kj_sum += 12_788 * x_h2
             pcs_kj_sum += 39_840 * x_ch4
@@ -294,6 +307,7 @@ class TabPCS(ttk.Frame):
             pcs_wh = pcs_kj / 3.6
             # compute PCI
             pci_kj_sum = 0 * x_n2
+            pci_kj_sum += 0 * x_o2
             pci_kj_sum += 0 * x_co2
             pci_kj_sum += 10_777 * x_h2
             pci_kj_sum += 35_818 * x_ch4
@@ -310,6 +324,7 @@ class TabPCS(ttk.Frame):
             # compute density
             d_comp_coef = PRES_REF_KPA/(R*TEMP_REF_K)
             density_sum = 28.013_5 * d_comp_coef * x_n2
+            density_sum += 31.998_8 * d_comp_coef * x_o2
             density_sum += 44.010 * d_comp_coef * x_co2
             density_sum += 2.015_9 * d_comp_coef * x_h2
             density_sum += 16.043 * d_comp_coef * x_ch4
@@ -324,6 +339,7 @@ class TabPCS(ttk.Frame):
             density = (density_sum/100) / z0
             # compute relative density
             rel_density_sum = (28.013_5 / M_AIR) * x_n2
+            rel_density_sum += (31.998_8 / M_AIR) * x_o2
             rel_density_sum += (44.010 / M_AIR) * x_co2
             rel_density_sum += (2.015_9 / M_AIR) * x_h2
             rel_density_sum += (16.043 / M_AIR) * x_ch4

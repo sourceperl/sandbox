@@ -25,6 +25,6 @@ def to_celsius(kelvin: float) -> float:
 def set_grid_conf(widget: ttk.Frame) -> None:
     """Apply global geometry to this frame (maintain uniform geometry across the entire frame)."""
     widget.columnconfigure(0, minsize=400)
-    widget.columnconfigure(1, minsize=350)
+    widget.columnconfigure(1, minsize=400)
     widget.rowconfigure(0, minsize=250)
-    widget.rowconfigure(1, minsize=200)
+    widget.rowconfigure(1, minsize=250)
