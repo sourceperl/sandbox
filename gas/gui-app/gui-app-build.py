@@ -50,6 +50,7 @@ if __name__ == '__main__':
     # copy the requirements
     copytree(src=origin_path / '../aga8/AGA8', dst=origin_path / 'AGA8', dirs_exist_ok=True)
     copytree(src=origin_path / '../sgerg/SGERG_88', dst=origin_path / 'SGERG_88', dirs_exist_ok=True)
+    copytree(src=origin_path / '../iso_6976/ISO_6976', dst=origin_path / 'ISO_6976', dirs_exist_ok=True)
 
     # build zipapp
     zipapp.create_archive(

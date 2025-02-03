@@ -3,6 +3,8 @@ import traceback
 from math import sqrt
 from tkinter import ttk
 
+from ISO_6976 import ISO_6976
+
 from .conf import AppConf
 from .const import M_AIR, PRES_REF_KPA, TEMP_REF_K, R
 from .misc import set_grid_conf
@@ -263,11 +265,11 @@ class TabPCS(ttk.Frame):
                 x_iso_c4h10 = float(self.field_iso_c4h10.get())
                 x_n_c4h10 = float(self.field_nc4h10.get())
                 x_iso_c5h12 = float(self.field_iso_c5h12.get())
-                x_neo_c5h12 = float(self.field_neo_c5h12.get())
                 x_n_c5h12 = float(self.field_n_c5h12.get())
+                x_neo_c5h12 = float(self.field_neo_c5h12.get())
                 x_n_c6h14 = float(self.field_n_c6h14.get())
                 # update sum
-                x_sum = + x_n2 + x_co2 + x_h2 + x_ch4 + x_c2h6 + x_c3h8
+                x_sum = x_n2 + x_o2 + x_co2 + x_h2 + x_ch4 + x_c2h6 + x_c3h8
                 x_sum += x_iso_c4h10 + x_n_c4h10 + x_iso_c5h12 + x_n_c5h12 + x_neo_c5h12 + x_n_c6h14
                 self.field_sum.set(f'{x_sum:.02f}')
             except ValueError:
@@ -347,10 +349,10 @@ class TabPCS(ttk.Frame):
             rel_density_sum += (44.097 / M_AIR) * x_c3h8
             rel_density_sum += (58.123 / M_AIR) * x_n_c4h10
             rel_density_sum += (58.123 / M_AIR) * x_iso_c4h10
-            rel_density_sum += (72.150/ M_AIR) * x_n_c5h12
-            rel_density_sum += (72.150/ M_AIR) * x_iso_c5h12
-            rel_density_sum += (72.150/ M_AIR) * x_neo_c5h12
-            rel_density_sum += (86.177/ M_AIR) * x_n_c6h14
+            rel_density_sum += (72.150 / M_AIR) * x_n_c5h12
+            rel_density_sum += (72.150 / M_AIR) * x_iso_c5h12
+            rel_density_sum += (72.150 / M_AIR) * x_neo_c5h12
+            rel_density_sum += (86.177 / M_AIR) * x_n_c6h14
             rel_density = 0.999_41 * (rel_density_sum/100) / z0
             # compute wobbe
             wobbe = pcs_wh/sqrt(rel_density)
