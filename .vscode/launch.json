@@ -8,7 +8,7 @@
             "program": "gas/gui-app",
             "console": "integratedTerminal",
             "args": [
-                //"--no-full",
+                "--debug",
             ]
         },
         
