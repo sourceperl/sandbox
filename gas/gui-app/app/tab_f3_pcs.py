@@ -171,7 +171,7 @@ class TabPCS(ttk.Frame):
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
 
         # result 0°C/0°C frame
-        self.fm_res_t0_0 = ttk.LabelFrame(self, text='Résultats pour 0°C combustion/0°C mesure')
+        self.fm_res_t0_0 = ttk.LabelFrame(self, text='Résultats 0/0')
         self.fm_res_t0_0.grid(row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
         self.fm_res_t0_0.columnconfigure(0, minsize=140)
         # PCS entry
@@ -215,37 +215,37 @@ class TabPCS(ttk.Frame):
         self.fm_res_others.columnconfigure(0, minsize=140)
         # PCS entry
         row = 0
-        ttk.Label(self.fm_res_others, text='PCS (25°C/0°C):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_res_others, text='PCS (25/0):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         ttk.Entry(self.fm_res_others, textvariable=self.field_pcs_t25_0, state='readonly',
                   width=10).grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_res_others, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # PCI entry
         row += 1
-        ttk.Label(self.fm_res_others, text='PCI (25°C/0°C):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_res_others, text='PCI (25/0):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         ttk.Entry(self.fm_res_others, textvariable=self.field_pci_t25_0, state='readonly',
                   width=10).grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_res_others, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # wobbe entry
         row += 1
-        ttk.Label(self.fm_res_others, text='Wobbe (25°C/0°C):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_res_others, text='Wobbe (25/0):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         ttk.Entry(self.fm_res_others, textvariable=self.field_wobbe_t25_0, state='readonly',
                   width=10).grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_res_others, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # PCS entry
         row += 1
-        ttk.Label(self.fm_res_others, text='PCS (15°C/15°C):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_res_others, text='PCS (15/15):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         ttk.Entry(self.fm_res_others, textvariable=self.field_pcs_t15_15, state='readonly',
                   width=10).grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_res_others, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # PCI entry
         row += 1
-        ttk.Label(self.fm_res_others, text='PCI (15°C/15°C):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_res_others, text='PCI (15/15):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         ttk.Entry(self.fm_res_others, textvariable=self.field_pci_t15_15, state='readonly',
                   width=10).grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_res_others, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # wobbe entry
         row += 1
-        ttk.Label(self.fm_res_others, text='Wobbe (15°C/15°C):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_res_others, text='Wobbe (15/15):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         ttk.Entry(self.fm_res_others, textvariable=self.field_wobbe_t15_15, state='readonly',
                   width=10).grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_res_others, text='Wh/nm\u00b3').grid(row=row, column=2, padx=5, pady=5, sticky='w')
