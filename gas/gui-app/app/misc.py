@@ -1,4 +1,7 @@
+import tkinter as tk
 from tkinter import ttk
+
+from .conf import AppConf
 
 
 # some functions
@@ -28,3 +31,37 @@ def set_grid_conf(widget: ttk.Frame) -> None:
     widget.columnconfigure(1, minsize=400)
     widget.rowconfigure(0, minsize=250)
     widget.rowconfigure(1, minsize=250)
+
+
+# some class
+class TabTemplate(ttk.Frame):
+    def __init__(self, master: tk.Tk, app_conf: AppConf, *args, **kwargs) -> None:
+        super().__init__(master, *args, **kwargs)
+        # global tk app shortcuts
+        self.tk_app = master
+        self.app_conf = app_conf
+
+    def _valid_int(self, new_value: str, widget_name: str) -> bool:
+        for char in new_value:
+            if char not in '+0123456789':
+                return False
+        # validate numeric entry
+        try:
+            int(new_value)
+            self.nametowidget(widget_name).config(style='TEntry')
+        except ValueError:
+            self.nametowidget(widget_name).config(style='Red.TEntry')
+        return True
+
+    def _valid_float(self, new_value: str, widget_name: str) -> bool:
+        # reject invalid char
+        for char in new_value:
+            if char not in '+-.0123456789':
+                return False
+        # validate numeric entry
+        try:
+            float(new_value)
+            self.nametowidget(widget_name).config(style='TEntry')
+        except ValueError:
+            self.nametowidget(widget_name).config(style='Red.TEntry')
+        return True

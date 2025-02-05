@@ -1,9 +1,9 @@
 import math
 
 
-def get_humidity_mg(dew_point_c: float, p_bara: float) -> float:
+def get_vol_humidity(dew_point_c: float, p_bara: float) -> float:
     """ 
-    Compute the absolut humidity en mg/nm3.
+    Compute the volumetric humidity in mg/nm3.
 
     Args:
         dew_point_c (float): dew point in degrees Celsius
@@ -15,15 +15,15 @@ def get_humidity_mg(dew_point_c: float, p_bara: float) -> float:
     return (a/c) + b
 
 
-def get_dew_point_c(hum_mg: float, p_bara: float) -> float:
+def get_dew_point_c(vol_hum_mg: float, p_bara: float) -> float:
     """
     Compute the dew point in degrees Celsius.
 
     Args:
-        hum_mg (float): water content in mg/nm3
+        vol_hum_mg (float): volumetric humidity in mg/nm3
         p_bara (float): pressure in absolute bar
     """
-    a_poly = (1.023e1 + 1.811e-3 * hum_mg - 9.711e-8 * hum_mg**2 + 1.450e-12 * hum_mg**3)
-    a = a_poly * math.log(p_bara) + 1.049e1 * math.log(hum_mg) - 8.990e1
+    a_poly = (1.023e1 + 1.811e-3 * vol_hum_mg - 9.711e-8 * vol_hum_mg**2 + 1.450e-12 * vol_hum_mg**3)
+    a = a_poly * math.log(p_bara) + 1.049e1 * math.log(vol_hum_mg) - 8.990e1
     b = -8.325e-2 + 1.063 * a + 1.821e-3 * a**2 - 2.790e-5 * a**3
     return b
