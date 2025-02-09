@@ -14,9 +14,12 @@ def lorenz_sim(n: int, dt: float = 0.01, sigma: float = 10.0, rho: float = 28.0,
 
     # compute the next position after a time step dt
     for _ in range(n-1):
-        x += sigma * (y - x) * dt
-        y += (x * (rho - z) - y) * dt
-        z += (x * y - beta * z) * dt
+        dx = sigma * (y - x) * dt
+        dy = (x * (rho - z) - y) * dt
+        dz = (x * y - beta * z) * dt
+        x += dx
+        y += dy
+        z += dz
         x_l.append(x)
         y_l.append(y)
         z_l.append(z)
