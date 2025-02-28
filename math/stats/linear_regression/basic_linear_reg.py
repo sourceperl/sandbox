@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+""" A basic linear regression example. """
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
