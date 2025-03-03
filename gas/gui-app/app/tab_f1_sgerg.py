@@ -15,6 +15,7 @@ INIT_CO2 = 0.69
 INIT_H2 = 0.0
 INIT_PRES = 60.0
 INIT_TEMP = 16.85
+INIT_C_READ = 63.972
 INIT_RAW_VOL = 1000.0
 
 
@@ -41,6 +42,8 @@ class TabSGERG(ttk.Frame):
         self.field_pres.trace_add('write', self._on_fields_update)
         self.field_temp = tk.StringVar(value=f'{INIT_TEMP:.2f}')
         self.field_temp.trace_add('write', self._on_fields_update)
+        self.field_c_read = tk.StringVar(value=f'{INIT_C_READ:.3f}')
+        self.field_c_read.trace_add('write', self._on_fields_update)
         self.field_vol_raw = tk.StringVar(value=f'{INIT_RAW_VOL:.2f}')
         self.field_vol_raw.trace_add('write', self._on_fields_update)
         # variables to store ttk.Entry OUT values
@@ -49,6 +52,7 @@ class TabSGERG(ttk.Frame):
         self.field_z_z0 = tk.StringVar()
         self.field_z0_z = tk.StringVar()
         self.field_c_coef = tk.StringVar()
+        self.field_c_error = tk.StringVar()
         self.field_vol_cor = tk.StringVar()
 
         # add ttk.Entry widget commands for validation
@@ -106,6 +110,13 @@ class TabSGERG(ttk.Frame):
                                   validate='key', validatecommand=v_float_cmd, width=10)
         self.ent_temp.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_met, text='°C').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # C read entry
+        row += 1
+        ttk.Label(self.fm_met, text='Coefficient C sur ECV:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_vol = ttk.Entry(self.fm_met, textvariable=self.field_c_read,
+                                 validate='key', validatecommand=v_float_cmd, width=10)
+        self.ent_vol.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_met, text='').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # volume entry
         row += 1
         ttk.Label(self.fm_met, text='Volume mesureur:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
@@ -117,7 +128,7 @@ class TabSGERG(ttk.Frame):
         # compressibility factor frame
         self.fm_z = ttk.LabelFrame(self, text='Facteur de compressibilité')
         self.fm_z.grid(row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
-        self.fm_z.columnconfigure(0, minsize=125)
+        self.fm_z.columnconfigure(0, minsize=160)
         # Z entry
         row = 0
         ttk.Label(self.fm_z, text='Z:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
@@ -142,12 +153,18 @@ class TabSGERG(ttk.Frame):
         # correction frame
         self.fm_cor = ttk.LabelFrame(self, text='Correction')
         self.fm_cor.grid(row=1, column=1, padx=5, pady=5, sticky=tk.NSEW)
-        self.fm_cor.columnconfigure(0, minsize=125)
+        self.fm_cor.columnconfigure(0, minsize=160)
         # C entry
         row = 0
         ttk.Label(self.fm_cor, text='Coefficient C:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_c = ttk.Entry(self.fm_cor, textvariable=self.field_c_coef, state='readonly', width=10)
         self.ent_c.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        # C error entry
+        row += 1
+        ttk.Label(self.fm_cor, text='Erreur coefficient C:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_c_flow = ttk.Entry(self.fm_cor, textvariable=self.field_c_error, state='readonly', width=10)
+        self.ent_c_flow.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_cor, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # corrected flow entry
         row += 1
         ttk.Label(self.fm_cor, text='Volume de base:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
@@ -196,6 +213,7 @@ class TabSGERG(ttk.Frame):
             press_bar = float(self.field_pres.get())
             temp_c = float(self.field_temp.get())
             temp_k = to_kelvin(temp_c)
+            c_read = float(self.field_c_read.get())
             vol_raw = float(self.field_vol_raw.get())
             # french PCS k(wh/nm3, t_comb = 0 °C) to SGERG Hs (MJ/nm3, t_comb = 25 °C)
             hs_t25 = hs_to_t25(pcs/1000)
@@ -211,6 +229,7 @@ class TabSGERG(ttk.Frame):
             self.field_z_z0.set(f'{z/z0:.04f}')
             self.field_z0_z.set(f'{z0/z:.04f}')
             self.field_c_coef.set(f'{c_coef:.04f}')
+            self.field_c_error.set(f'{100.0 * (c_read - c_coef)/ c_coef:.02f}')
             self.field_vol_cor.set(f'{vol_raw * c_coef:_.0f}'.replace('_', ' '))
         except Exception:
             # mark fields as non-existent
@@ -219,6 +238,7 @@ class TabSGERG(ttk.Frame):
             self.field_z_z0.set('n/a')
             self.field_z0_z.set('n/a')
             self.field_c_coef.set('n/a')
+            self.field_c_error.set('n/a')
             self.field_vol_cor.set('n/a')
             # debug
             if self.app_conf.debug:

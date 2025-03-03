@@ -12,18 +12,20 @@ from .misc import set_grid_conf, to_kelvin
 INIT_DENSITY = 0.610
 INIT_N2 = 1.68
 INIT_CO2 = 0.69
+INIT_H2 = 0.0
 INIT_CH4 = 90.95
 INIT_C2H6 = 5.42
 INIT_C3H8 = 0.98
-INIT_NC4H10 = 0.05
-INIT_IC4H10 = 0.05
-INIT_NC5H12 = 0.08
-INIT_IC5H12 = 0.09
-INIT_IC5H12 = 0.09
-INIT_NC6H14 = 0.01
+INIT_N_C4H10 = 0.05
+INIT_ISO_C4H10 = 0.05
+INIT_N_C5H12 = 0.08
+INIT_ISO_C5H12 = 0.09
+INIT_NEO_C5H12 = 0.0
+INIT_N_C6H14 = 0.01
 INIT_C6H14 = 0.01
 INIT_PRES = 60.0
 INIT_TEMP = 16.85
+INIT_C_READ = 63.978
 INIT_RAW_VOL = 1000.0
 
 
@@ -42,26 +44,32 @@ class TabAGA8(ttk.Frame):
         self.field_n2.trace_add('write', self._on_fields_update)
         self.field_co2 = tk.StringVar(value=f'{INIT_CO2:.2f}')
         self.field_co2.trace_add('write', self._on_fields_update)
+        self.field_h2 = tk.StringVar(value=f'{INIT_H2:.2f}')
+        self.field_h2.trace_add('write', self._on_fields_update)
         self.field_ch4 = tk.StringVar(value=f'{INIT_CH4:.2f}')
         self.field_ch4.trace_add('write', self._on_fields_update)
         self.field_c2h6 = tk.StringVar(value=f'{INIT_C2H6:.2f}')
         self.field_c2h6.trace_add('write', self._on_fields_update)
         self.field_c3h8 = tk.StringVar(value=f'{INIT_C3H8:.2f}')
         self.field_c3h8.trace_add('write', self._on_fields_update)
-        self.field_nc4h10 = tk.StringVar(value=f'{INIT_NC4H10:.2f}')
+        self.field_nc4h10 = tk.StringVar(value=f'{INIT_N_C4H10:.2f}')
         self.field_nc4h10.trace_add('write', self._on_fields_update)
-        self.field_ic4h10 = tk.StringVar(value=f'{INIT_IC4H10:.2f}')
+        self.field_ic4h10 = tk.StringVar(value=f'{INIT_ISO_C4H10:.2f}')
         self.field_ic4h10.trace_add('write', self._on_fields_update)
-        self.field_nc5h12 = tk.StringVar(value=f'{INIT_NC5H12:.2f}')
+        self.field_nc5h12 = tk.StringVar(value=f'{INIT_N_C5H12:.2f}')
         self.field_nc5h12.trace_add('write', self._on_fields_update)
-        self.field_ic5h12 = tk.StringVar(value=f'{INIT_IC5H12:.2f}')
+        self.field_ic5h12 = tk.StringVar(value=f'{INIT_ISO_C5H12:.2f}')
         self.field_ic5h12.trace_add('write', self._on_fields_update)
-        self.field_nc6h14 = tk.StringVar(value=f'{INIT_NC6H14:.2f}')
+        self.field_neoc5h12 = tk.StringVar(value=f'{INIT_NEO_C5H12:.2f}')
+        self.field_neoc5h12.trace_add('write', self._on_fields_update)
+        self.field_nc6h14 = tk.StringVar(value=f'{INIT_N_C6H14:.2f}')
         self.field_nc6h14.trace_add('write', self._on_fields_update)
         self.field_pres = tk.StringVar(value=f'{INIT_PRES:.2f}')
         self.field_pres.trace_add('write', self._on_fields_update)
         self.field_temp = tk.StringVar(value=f'{INIT_TEMP:.2f}')
         self.field_temp.trace_add('write', self._on_fields_update)
+        self.field_c_read = tk.StringVar(value=f'{INIT_C_READ:.3f}')
+        self.field_c_read.trace_add('write', self._on_fields_update)
         self.field_vol_raw = tk.StringVar(value=f'{INIT_RAW_VOL:.2f}')
         self.field_vol_raw.trace_add('write', self._on_fields_update)
         # variables to store ttk.Entry OUT values
@@ -71,6 +79,7 @@ class TabAGA8(ttk.Frame):
         self.field_z_z0 = tk.StringVar()
         self.field_z0_z = tk.StringVar()
         self.field_c_coef = tk.StringVar()
+        self.field_c_error = tk.StringVar()
         self.field_vol_cor = tk.StringVar()
 
         # add ttk.Entry widget commands for validation
@@ -98,6 +107,13 @@ class TabAGA8(ttk.Frame):
         self.ent_co2 = ttk.Entry(self.fm_comp, textvariable=self.field_co2,
                                  validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_co2.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # H2 entry
+        row += 1
+        ttk.Label(self.fm_comp, text='H2:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_h2 = ttk.Entry(self.fm_comp, textvariable=self.field_h2,
+                                validate='key', validatecommand=v_float_cmd, width=8)
+        self.ent_h2.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # ch4 entry
         row += 1
@@ -148,6 +164,13 @@ class TabAGA8(ttk.Frame):
                                     validate='key', validatecommand=v_float_cmd, width=8)
         self.ent_ic5h12.grid(row=row, column=4, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=5, padx=5, pady=5, sticky='w')
+        # neo c5h12 entry
+        row += 1
+        ttk.Label(self.fm_comp, text='NEO C5H12:').grid(row=row, column=3, padx=5, pady=5, sticky='w')
+        self.ent_neoc5h12 = ttk.Entry(self.fm_comp, textvariable=self.field_neoc5h12,
+                                      validate='key', validatecommand=v_float_cmd, width=8)
+        self.ent_neoc5h12.grid(row=row, column=4, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_comp, text='%').grid(row=row, column=5, padx=5, pady=5, sticky='w')
         # nc6h14 entry
         row += 1
         ttk.Label(self.fm_comp, text='NC6H14:').grid(row=row, column=3, padx=5, pady=5, sticky='w')
@@ -181,6 +204,13 @@ class TabAGA8(ttk.Frame):
                                   validate='key', validatecommand=v_float_cmd, width=10)
         self.ent_temp.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_met, text='°C').grid(row=row, column=2, padx=5, pady=5, sticky='w')
+        # C read entry
+        row += 1
+        ttk.Label(self.fm_met, text='Coefficient C sur ECV:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_vol = ttk.Entry(self.fm_met, textvariable=self.field_c_read,
+                                 validate='key', validatecommand=v_float_cmd, width=10)
+        self.ent_vol.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_met, text='').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # volume entry
         row += 1
         ttk.Label(self.fm_met, text='Volume mesureur:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
@@ -192,7 +222,7 @@ class TabAGA8(ttk.Frame):
         # compressibility factor frame
         self.fm_z = ttk.LabelFrame(self, text='Facteur de compressibilité')
         self.fm_z.grid(row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
-        self.fm_z.columnconfigure(0, minsize=125)
+        self.fm_z.columnconfigure(0, minsize=150)
         # Z entry
         row = 0
         ttk.Label(self.fm_z, text='Z:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
@@ -217,12 +247,18 @@ class TabAGA8(ttk.Frame):
         # Z frame
         self.fm_cor = ttk.LabelFrame(self, text='Correction')
         self.fm_cor.grid(row=1, column=1, padx=5, pady=5, sticky=tk.NSEW)
-        self.fm_cor.columnconfigure(0, minsize=125)
+        self.fm_cor.columnconfigure(0, minsize=150)
         # C entry
         row = 0
         ttk.Label(self.fm_cor, text='Coefficient C:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_c = ttk.Entry(self.fm_cor, textvariable=self.field_c_coef, state='readonly', width=10)
         self.ent_c.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        # C error entry
+        row += 1
+        ttk.Label(self.fm_cor, text='Erreur coefficient C:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        self.ent_c_flow = ttk.Entry(self.fm_cor, textvariable=self.field_c_error, state='readonly', width=10)
+        self.ent_c_flow.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
+        ttk.Label(self.fm_cor, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
         # corrected flow entry
         row += 1
         ttk.Label(self.fm_cor, text='Volume de base:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
@@ -269,16 +305,18 @@ class TabAGA8(ttk.Frame):
                 x_ch4 = float(self.field_ch4.get())
                 x_n2 = float(self.field_n2.get())
                 x_co2 = float(self.field_co2.get())
+                x_h2 = float(self.field_h2.get())
                 x_c2h6 = float(self.field_c2h6.get())
                 x_c3h8 = float(self.field_c3h8.get())
                 x_ic4h10 = float(self.field_ic4h10.get())
                 x_nc4h10 = float(self.field_nc4h10.get())
                 x_ic5h12 = float(self.field_ic5h12.get())
                 x_nc5h12 = float(self.field_nc5h12.get())
+                x_neoc5h12 = float(self.field_neoc5h12.get())
                 x_nc6h14 = float(self.field_nc6h14.get())
                 # update sum
-                x_sum = x_ch4 + x_n2 + x_co2 + x_c2h6 + x_c3h8
-                x_sum += x_ic4h10 + x_nc4h10 + x_ic5h12 + x_nc5h12 + x_nc6h14
+                x_sum = x_ch4 + x_n2 + x_co2 + x_h2 + x_c2h6 + x_c3h8
+                x_sum += x_ic4h10 + x_nc4h10 + x_ic5h12 + x_nc5h12 + x_neoc5h12+ x_nc6h14
                 self.field_sum.set(f'{x_sum:.02f}')
             except ValueError:
                 # unable to compute sum
@@ -288,31 +326,34 @@ class TabAGA8(ttk.Frame):
             press_bar = float(self.field_pres.get())
             temp_c = float(self.field_temp.get())
             temp_k = to_kelvin(temp_c)
+            c_read = float(self.field_c_read.get())
             vol_raw = float(self.field_vol_raw.get())
+            # as said in table 1 of the norm the neopentane (as a minor component) is associated with the N-Pentane
+            x_nc5h12_eq = x_nc5h12 + x_neoc5h12
             # do AGA8 (pass value as ratio 0.0 to 1.0)
             x = [
-                0.0,             # 0 - PLACEHOLDER
-                x_ch4 / 100,     # 1 - Methane C1 (CH4)
-                x_n2 / 100,      # 2 - Nitrogen (N)
-                x_co2 / 100,     # 3 - Carbon dioxide (CO2)
-                x_c2h6 / 100,    # 4 - Ethane C2 (C2H6)
-                x_c3h8 / 100,    # 5 - Propane C3 (C3H8)
-                x_ic4h10 / 100,  # 6 - Iso-Butane IC4 (i-C4H10)
-                x_nc4h10 / 100,  # 7 - n-Butane NC4 (n-C4H10)
-                x_ic5h12 / 100,  # 8 - Isopentane IC5 (i-C5H12)
-                x_nc5h12 / 100,  # 9 - n-Pentane NC5 (n-C5H12)
-                x_nc6h14 / 100,  # 10 - n-Hexane (C6H14)
-                0.0,             # 11 - n-Heptane (C7H16)
-                0.0,             # 12 - n-Octane (C8H18)
-                0.0,             # 13 - n-Nonane (C9H20)
-                0.0,             # 14 - n-Decane (C10H22)
-                0.0,             # 15 - Hydrogen (H)
-                0.0,             # 16 - Oxygen (O)
-                0.0,             # 17 - Carbon monoxide (CO)
-                0.0,             # 18 - Water (H2O)
-                0.0,             # 19 - Hydrogen sulfide (H2S)
-                0.0,             # 20 - Helium (He)
-                0.0,             # 21 - Argon (Ar)
+                0.0,               # 0 - PLACEHOLDER
+                x_ch4 / 100,       # 1 - Methane C1 (CH4)
+                x_n2 / 100,        # 2 - Nitrogen (N)
+                x_co2 / 100,       # 3 - Carbon dioxide (CO2)
+                x_c2h6 / 100,      # 4 - Ethane C2 (C2H6)
+                x_c3h8 / 100,      # 5 - Propane C3 (C3H8)
+                x_ic4h10 / 100,    # 6 - Iso-Butane IC4 (i-C4H10)
+                x_nc4h10 / 100,    # 7 - n-Butane NC4 (n-C4H10)
+                x_ic5h12 / 100,    # 8 - Isopentane IC5 (i-C5H12)
+                x_nc5h12_eq / 100, # 9 - n-Pentane NC5 (n-C5H12)
+                x_nc6h14 / 100,    # 10 - n-Hexane (C6H14)
+                0.0,               # 11 - n-Heptane (C7H16)
+                0.0,               # 12 - n-Octane (C8H18)
+                0.0,               # 13 - n-Nonane (C9H20)
+                0.0,               # 14 - n-Decane (C10H22)
+                x_h2 / 100,        # 15 - Hydrogen (H)
+                0.0,               # 16 - Oxygen (O)
+                0.0,               # 17 - Carbon monoxide (CO)
+                0.0,               # 18 - Water (H2O)
+                0.0,               # 19 - Hydrogen sulfide (H2S)
+                0.0,               # 20 - Helium (He)
+                0.0,               # 21 - Argon (Ar)
             ]
             # use AGA8Detail class
             aga8_detail = AGA8Detail(p_bara=press_bar, t_celsius=temp_c, x=x).run()
@@ -328,6 +369,7 @@ class TabAGA8(ttk.Frame):
             self.field_z_z0.set(f'{z/z0:.04f}')
             self.field_z0_z.set(f'{z0/z:.04f}')
             self.field_c_coef.set(f'{c_coef:.04f}')
+            self.field_c_error.set(f'{100.0 * (c_read - c_coef)/ c_coef:.02f}')
             self.field_vol_cor.set(f'{vol_raw * c_coef:_.0f}'.replace('_', ' '))
         except Exception:
             # mark fields as non-existent
@@ -336,6 +378,7 @@ class TabAGA8(ttk.Frame):
             self.field_z_z0.set('n/a')
             self.field_z0_z.set('n/a')
             self.field_c_coef.set('n/a')
+            self.field_c_error.set('n/a')
             self.field_vol_cor.set('n/a')
             # debug
             if self.app_conf.debug:
