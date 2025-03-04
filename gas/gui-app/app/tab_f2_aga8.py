@@ -222,7 +222,7 @@ class TabAGA8(ttk.Frame):
         # compressibility factor frame
         self.fm_z = ttk.LabelFrame(self, text='Facteur de compressibilité')
         self.fm_z.grid(row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
-        self.fm_z.columnconfigure(0, minsize=150)
+        self.fm_z.columnconfigure(0, minsize=160)
         # Z entry
         row = 0
         ttk.Label(self.fm_z, text='Z:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
@@ -247,7 +247,7 @@ class TabAGA8(ttk.Frame):
         # Z frame
         self.fm_cor = ttk.LabelFrame(self, text='Correction')
         self.fm_cor.grid(row=1, column=1, padx=5, pady=5, sticky=tk.NSEW)
-        self.fm_cor.columnconfigure(0, minsize=150)
+        self.fm_cor.columnconfigure(0, minsize=160)
         # C entry
         row = 0
         ttk.Label(self.fm_cor, text='Coefficient C:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
