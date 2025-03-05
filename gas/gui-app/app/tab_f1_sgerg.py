@@ -61,7 +61,7 @@ class TabSGERG(ttk.Frame):
 
         # create and place widgets
         # composition frame
-        self.fm_comp = ttk.LabelFrame(self, text='Composition')
+        self.fm_comp = ttk.LabelFrame(self, text='Saisie des données SGERG')
         self.fm_comp.grid(row=0, column=0, padx=5, pady=5, sticky=tk.NSEW)
         self.fm_comp.columnconfigure(0, minsize=160)
         # PCS entry
@@ -93,7 +93,7 @@ class TabSGERG(ttk.Frame):
         ttk.Label(self.fm_comp, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
 
         # metering frame
-        self.fm_met = ttk.LabelFrame(self, text='Comptage')
+        self.fm_met = ttk.LabelFrame(self, text='Saisie des données de comptage')
         self.fm_met.grid(row=1, column=0, padx=5, pady=5, sticky=tk.NSEW)
         self.fm_met.columnconfigure(0, minsize=160)
         # pressure entry
@@ -126,7 +126,7 @@ class TabSGERG(ttk.Frame):
         ttk.Label(self.fm_met, text='m\u00b3 (brut)').grid(row=row, column=2, padx=5, pady=5, sticky='w')
 
         # compressibility factor frame
-        self.fm_z = ttk.LabelFrame(self, text='Facteur de compressibilité')
+        self.fm_z = ttk.LabelFrame(self, text='Résultat du calcul du facteur de compressibilité')
         self.fm_z.grid(row=0, column=1, padx=5, pady=5, sticky=tk.NSEW)
         self.fm_z.columnconfigure(0, minsize=160)
         # Z entry
@@ -151,7 +151,7 @@ class TabSGERG(ttk.Frame):
         self.ent_z0_z.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
 
         # correction frame
-        self.fm_cor = ttk.LabelFrame(self, text='Correction')
+        self.fm_cor = ttk.LabelFrame(self, text='Résultat du calcul de correction')
         self.fm_cor.grid(row=1, column=1, padx=5, pady=5, sticky=tk.NSEW)
         self.fm_cor.columnconfigure(0, minsize=160)
         # C entry
@@ -161,7 +161,7 @@ class TabSGERG(ttk.Frame):
         self.ent_c.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         # C error entry
         row += 1
-        ttk.Label(self.fm_cor, text='Erreur coefficient C:').grid(row=row, column=0, padx=5, pady=5, sticky='w')
+        ttk.Label(self.fm_cor, text='Erreur C (vs ECV):').grid(row=row, column=0, padx=5, pady=5, sticky='w')
         self.ent_c_flow = ttk.Entry(self.fm_cor, textvariable=self.field_c_error, state='readonly', width=10)
         self.ent_c_flow.grid(row=row, column=1, padx=5, pady=5, sticky='ew')
         ttk.Label(self.fm_cor, text='%').grid(row=row, column=2, padx=5, pady=5, sticky='w')
