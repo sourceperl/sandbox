@@ -4,6 +4,7 @@ from tkinter import ttk
 
 from .__version__ import __version__
 from .conf import AppConf
+from .const import APP_NAME
 from .tab_f1_sgerg import TabSGERG
 from .tab_f2_aga8 import TabAGA8
 from .tab_f3_pcs import TabPCS
@@ -14,7 +15,7 @@ class App(tk.Tk):
     def __init__(self, app_conf: AppConf, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         # global tk conf
-        self.title(f'EquaGaz - V{__version__}')
+        self.title(f'{APP_NAME} - V{__version__}')
         self.geometry('900x560')
         self.resizable(width=False, height=False)
         # ensure global ttk style is default

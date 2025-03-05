@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from shutil import copytree
 
+from app.const import APP_NAME
+
 # some const
 ZIP_FILE = 'app.pyz'
 
@@ -34,7 +36,7 @@ def in_zip(path: Path) -> bool:
     if path.name in [ZIP_FILE, '__pycache__', '.gitignore', os.path.basename(__file__)]:
         return False
     # also avoid to add files like 'package/__pycache__/*.pyc'
-    for ancestor in  path.parents:
+    for ancestor in path.parents:
         if ancestor.name == '__pycache__':
             return False
     return True
@@ -45,7 +47,7 @@ if __name__ == '__main__':
     origin_path = Path(os.path.dirname(os.path.realpath(__file__)))
 
     # build app_info.txt in archive
-    build_app_info(to_path=Path(origin_path / 'app_info.txt'), app_name='gas-gui')
+    build_app_info(to_path=Path(origin_path / 'app_info.txt'), app_name=APP_NAME)
 
     # copy the requirements
     copytree(src=origin_path / '../aga8/AGA8', dst=origin_path / 'AGA8', dirs_exist_ok=True)
