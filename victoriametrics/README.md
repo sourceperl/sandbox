@@ -9,12 +9,18 @@ sudo apt install curl jq
 
 ## Request instant metric value
 
+> https://docs.victoriametrics.com/keyconcepts/#instant-query
+
 ```bash
-# query for my_metric last value until 15 minutes ago from now
+# query for my_metric last value until 15 minutes ago from now (default is 5 minutes)
 curl -s 'http://127.0.0.1:8428/api/v1/query' -d 'query=my_metric{}' -d 'step=15m' | jq .data.result
+# query the latest value of all metrics prefixed with "app_"
+curl -s 'http://127.0.0.1:8428/api/v1/query' -d 'query={__name__=~"app_.*"}' | jq .data.result
 ```
 
 ## Request range metric values
+
+> https://docs.victoriametrics.com/keyconcepts/#range-query
 
 ```bash
 # query values for my_metric from last hour with steps of 1 minute
@@ -116,8 +122,11 @@ curl -s http://127.0.0.1:8428/api/v1/export/csv -d 'match[]=my_metric' -d 'forma
 curl -s http://localhost:8428/api/v1/export/csv -d 'match[]={__name__!=""}' -d 'format=__name__,__value__,__timestamp__:rfc3339' > all.csv
 ```
 
-## Delete a metric
+## Delete metric(s)
 
 ```bash
+# delete my_metric
 curl -s http://127.0.0.1:8428/api/v1/admin/tsdb/delete_series -d 'match[]=my_metric'
+# remove all metrics whose name is prefixed with "app_"
+curl -s http://127.0.0.1:8428/api/v1/admin/tsdb/delete_series -d 'match[]={__name__=~"app_.*"}'
 ```
