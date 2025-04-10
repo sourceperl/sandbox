@@ -7,6 +7,13 @@
 sudo apt install curl jq 
 ```
 
+## Read current VM version
+
+```bash
+curl -s http://localhost:8428/metrics | grep '^vm_app_version' | sed -n 's/.*short_version="\([^"]*\)".*/\1/p'
+```
+
+
 ## Request instant metric value
 
 > https://docs.victoriametrics.com/keyconcepts/#instant-query
