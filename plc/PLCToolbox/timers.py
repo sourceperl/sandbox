@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 
 
 def monotonic_ms() -> int:
@@ -12,12 +13,22 @@ class TimerOffDelay:
         self.preset_ms = preset_ms
         # private
         self._in = False
-        self._start_time = monotonic_ms()
+        self._start_ms: Optional[int] = None
+
+    def __str__(self) -> str:
+        return f'TimerOffDelay(preset_ms={self.preset_ms}, elapsed_ms={self.elapsed_ms}, ' \
+               f'input={self.input}, output={self.output})'
+
+    def __call__(self, input: bool) -> bool:
+        self.input = input
+        return self.output
 
     @property
     def elapsed_ms(self) -> int:
+        if self._start_ms is None:
+            return 0
         if not self._in:
-            return monotonic_ms() - self._start_time
+            return min(self.preset_ms, monotonic_ms() - self._start_ms)
         else:
             return 0
 
@@ -29,19 +40,17 @@ class TimerOffDelay:
     def input(self, value: bool):
         # on falling edge (True -> False)
         if self._in and not value:
-            self._start_time = monotonic_ms()
+            self._start_ms = monotonic_ms()
         self._in = value
 
     @property
     def output(self) -> bool:
         if self._in:
             return True
+        elif self._start_ms is None:
+            return False
         else:
             return self.elapsed_ms < self.preset_ms
-
-    def __str__(self) -> str:
-        return f'TimerOffDelay(preset_ms={self.preset_ms}, elapsed_ms={self.elapsed_ms}, ' \
-               f'input={self.input}, output={self.output})'
 
 
 class TimerOnDelay:
@@ -50,12 +59,22 @@ class TimerOnDelay:
         self.preset_ms = preset_ms
         # private
         self._in = False
-        self._start_time = monotonic_ms()
+        self._start_ms: Optional[int] = None
+
+    def __str__(self) -> str:
+        return f'TimerOnDelay(preset_ms={self.preset_ms}, elapsed_ms={self.elapsed_ms}, ' \
+               f'input={self.input}, output={self.output})'
+
+    def __call__(self, input: bool) -> bool:
+        self.input = input
+        return self.output
 
     @property
     def elapsed_ms(self) -> int:
+        if self._start_ms is None:
+            return 0
         if self._in:
-            return monotonic_ms() - self._start_time
+            return min(self.preset_ms, monotonic_ms() - self._start_ms)
         else:
             return 0
 
@@ -67,7 +86,7 @@ class TimerOnDelay:
     def input(self, value: bool):
         # on rising edge (False -> True)
         if not self._in and value:
-            self._start_time = monotonic_ms()
+            self._start_ms = monotonic_ms()
         self._in = value
 
     @property
@@ -76,10 +95,6 @@ class TimerOnDelay:
             return self.elapsed_ms >= self.preset_ms
         else:
             return False
-
-    def __str__(self) -> str:
-        return f'TimerOnDelay(preset_ms={self.preset_ms}, elapsed_ms={self.elapsed_ms}, ' \
-               f'input={self.input}, output={self.output})'
 
 
 class TimerPeriod:
@@ -90,13 +105,21 @@ class TimerPeriod:
         # private
         self._in = False
         self._pulse_generated = False
-        self._start_time = monotonic_ms()
+        self._start_ms: Optional[int] = None
+
+    def __str__(self) -> str:
+        return f'TimerPeriod(preset_ms={self.preset_ms}, elapsed_ms={self.elapsed_ms}, ' \
+               f'input={self.input}, output={self.output})'
+
+    def __call__(self, input: bool) -> bool:
+        self.input = input
+        return self.output
 
     @property
     def elapsed_ms(self) -> int:
-        if not self._pulse_generated:
+        if not self._start_ms:
             return 0
-        return min(monotonic_ms() - self._start_time, self.preset_ms)
+        return min(monotonic_ms() - self._start_ms, self.preset_ms)
 
     @property
     def input(self) -> bool:
@@ -108,10 +131,10 @@ class TimerPeriod:
         if not self._in and value:
             if self._pulse_generated:
                 if self.resettable:
-                    self._start_time = monotonic_ms()
+                    self._start_ms = monotonic_ms()
             else:
                 self._pulse_generated = True
-                self._start_time = monotonic_ms()
+                self._start_ms = monotonic_ms()
         # on falling edge (True -> False)
         if self._in and not value:
             if not self.output:
@@ -125,7 +148,3 @@ class TimerPeriod:
             return self.elapsed_ms < self.preset_ms
         else:
             return False
-
-    def __str__(self) -> str:
-        return f'TimerPeriod(preset_ms={self.preset_ms}, elapsed_ms={self.elapsed_ms}, ' \
-               f'input={self.input}, output={self.output})'
