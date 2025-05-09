@@ -4,7 +4,7 @@ from typing import Optional
 
 def monotonic_ms() -> int:
     """Return the value (in milliseconds) of a monotonic clock."""
-    return round(time.monotonic() * 1000)
+    return int(time.monotonic() * 1000)
 
 
 class TimerOffDelay:
@@ -27,10 +27,7 @@ class TimerOffDelay:
     def elapsed_ms(self) -> int:
         if self._start_ms is None:
             return 0
-        if not self._in:
-            return min(self.preset_ms, monotonic_ms() - self._start_ms)
-        else:
-            return 0
+        return min(self.preset_ms, monotonic_ms() - self._start_ms)
 
     @property
     def input(self) -> bool:
@@ -38,6 +35,9 @@ class TimerOffDelay:
 
     @input.setter
     def input(self, value: bool):
+        # on rising edge (False -> True)
+        if not self._in and value:
+            self._start_ms = None
         # on falling edge (True -> False)
         if self._in and not value:
             self._start_ms = monotonic_ms()
@@ -45,10 +45,8 @@ class TimerOffDelay:
 
     @property
     def output(self) -> bool:
-        if self._in:
-            return True
-        elif self._start_ms is None:
-            return False
+        if not self.preset_ms or self._start_ms is None:
+            return self._in
         else:
             return self.elapsed_ms < self.preset_ms
 
@@ -73,10 +71,7 @@ class TimerOnDelay:
     def elapsed_ms(self) -> int:
         if self._start_ms is None:
             return 0
-        if self._in:
-            return min(self.preset_ms, monotonic_ms() - self._start_ms)
-        else:
-            return 0
+        return min(self.preset_ms, monotonic_ms() - self._start_ms)
 
     @property
     def input(self) -> bool:
@@ -87,14 +82,16 @@ class TimerOnDelay:
         # on rising edge (False -> True)
         if not self._in and value:
             self._start_ms = monotonic_ms()
+        # on falling edge (True -> False)
+        if self._in and not value:
+            self._start_ms = None
         self._in = value
 
     @property
     def output(self) -> bool:
-        if self._in:
-            return self.elapsed_ms >= self.preset_ms
-        else:
-            return False
+        if not self.preset_ms:
+            return self._in
+        return self.elapsed_ms >= self.preset_ms
 
 
 class TimerPeriod:
@@ -104,7 +101,6 @@ class TimerPeriod:
         self.resettable = resettable
         # private
         self._in = False
-        self._pulse_generated = False
         self._start_ms: Optional[int] = None
 
     def __str__(self) -> str:
@@ -129,22 +125,21 @@ class TimerPeriod:
     def input(self, value: bool):
         # on rising edge (False -> True)
         if not self._in and value:
-            if self._pulse_generated:
-                if self.resettable:
-                    self._start_ms = monotonic_ms()
-            else:
-                self._pulse_generated = True
+            if self._start_ms is None or self.resettable:
                 self._start_ms = monotonic_ms()
         # on falling edge (True -> False)
         if self._in and not value:
-            if not self.output:
-                self._pulse_generated = False
+            if self.elapsed_ms >= self.preset_ms:
+                self._start_ms = None
         # set input state
         self._in = value
 
     @property
     def output(self) -> bool:
-        if self._pulse_generated:
-            return self.elapsed_ms < self.preset_ms
-        else:
+        if self._start_ms is None:
             return False
+        if not self._in and self.elapsed_ms >= self.preset_ms:
+            self._start_ms = None
+            return False
+        else:
+            return self.elapsed_ms < self.preset_ms

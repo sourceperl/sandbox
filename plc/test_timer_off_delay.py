@@ -16,19 +16,24 @@ input_sig = Signal('input')
 output_sig = Signal('output')
 elapsed_ms_sig = Signal('elapsed_ms')
 preset_ms_sig = Signal('preset_ms')
+time_line = []
 
 # Timer on-delay
-test_pattern = [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, ]
-tof = TimerOffDelay(preset_ms=2)
+test_pattern = [0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+tof = TimerOffDelay(preset_ms=4)
+t_origin = time.monotonic()
 
 for idx, value in enumerate(test_pattern):
-    input = bool(value)
-    output = tof(input)
-    input_sig.data.append(input)
-    output_sig.data.append(output)
-    elapsed_ms_sig.data.append(tof.elapsed_ms)
-    preset_ms_sig.data.append(tof.preset_ms)
-    time.sleep(1e-3)
+    # add 4 x 250 us points for each ms
+    for _ in range(4):
+        input = bool(value)
+        output = tof(input)
+        input_sig.data.append(input)
+        output_sig.data.append(output)
+        elapsed_ms_sig.data.append(tof.elapsed_ms)
+        preset_ms_sig.data.append(tof.preset_ms)
+        time_line.append(round((time.monotonic() - t_origin) * 1_000, 1))
+        time.sleep(0.25e-3)
 
 # define the signals
 signals: List[Signal] = [input_sig, output_sig, elapsed_ms_sig, preset_ms_sig]
@@ -40,7 +45,7 @@ fig, axs = plt.subplots(len(signals), 1, figsize=(10, 6), sharex=True)
 for i, signal in enumerate(signals):
     ax = axs[i]
     ax.set_ylabel(signal.name)
-    ax.step(range(len(signal.data)), signal.data, where='pre')
+    ax.step(time_line, signal.data, where='pre')
     ax.grid()
 
 # set x-axis label for the last subplot
