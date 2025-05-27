@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 # some const
-VERSION_TARGET="v1.117.1"
+VERSION_TARGET="v1.118.0"
 
 # abort on error
 set -e
