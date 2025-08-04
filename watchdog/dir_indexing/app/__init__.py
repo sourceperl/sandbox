@@ -33,20 +33,36 @@ class FilesIndex:
         self.index_path = index_path
         # internal sha256 cache
         self._files_sha256_d = {}
-    
-    def add_file(self, file_path: Path):
+
+    def _get_index_name(self, file_path: Path) -> str:
+        return str(file_path.relative_to(self.watched_path))
+
+    def add(self, file_path: Path, force: bool = False):
         # allow only file
         if not file_path.is_file():
+            return
+        # skip file which are not in the watched directory
+        if not file_path.is_relative_to(self.watched_path):
             return
         # exclude index file to prevent infinite loop
         if file_path.samefile(self.index_path):
             return
-        # file_path to relative_path ("watched_dir_path/filename" -> "filename")
-        relative_path = file_path.relative_to(self.watched_path)
-        checksum = calculate_sha256(file_path)
-        if checksum:
+        # already indexed ?
+        index_name = self._get_index_name(file_path)
+        if force or index_name not in self._files_sha256_d:
+            # file_path to relative_path ("watched_dir_path/filename" -> "filename")
+            checksum = calculate_sha256(file_path)
+            if not checksum:
+                return
             logger.debug(f'compute sha256 for {file_path} ({checksum[:10]})')
-            self._files_sha256_d[relative_path.name] = checksum
+            self._files_sha256_d[index_name] = checksum
+            return
+
+    def delete(self, file_path: Path):
+        try:
+            del self._files_sha256_d[self._get_index_name(file_path)]
+        except KeyError:
+            pass
 
     def init(self):
         """ Walks on watched directory, calculates SHA256 for all files and writes them to the index file. """
@@ -54,17 +70,17 @@ class FilesIndex:
         self._files_sha256_d.clear()
         # add all files in the watched directory
         for file in self.watched_path.rglob('*'):
-            self.add_file(file)
+            self.add(file)
         # create or update index file
-        self._build_index()
+        self.sync()
 
-    def _build_index(self):
+    def sync(self):
         """ Transfer internal sha256 cache to a sorted index file. """
         try:
             with open(self.watched_path / self.index_path, 'w') as f:
                 for file, sha256 in sorted(self._files_sha256_d.items()):
                     f.write(f'{sha256} {file}\n')
-            logger.debug(f'index file "{self.index_path}" has been updated.')
+            logger.debug(f'index file "{self.index_path}" has been regenerated.')
         except Exception as e:
             logger.error(f'error writing to output file: {e}')
 
@@ -93,9 +109,23 @@ class EventHandler(FileSystemEventHandler):
         # log unignored event message
         logger.debug(f'receive event {event}')
         # trigger index generation on any change
-        if isinstance(event, (FileCreatedEvent, FileDeletedEvent, FileModifiedEvent, FileMovedEvent)):
-            logger.info(f'change detected -> re-generating {self.index_path}')
-            self.files_index.init()
+        if isinstance(event, FileCreatedEvent):
+            logger.info(f'add file {event.src_path} to index')
+            self.files_index.add(Path(event.src_path))
+            self.files_index.sync()
+        elif isinstance(event, FileDeletedEvent):
+            logger.info(f'remove file {event.src_path} from index')
+            self.files_index.delete(Path(event.src_path))
+            self.files_index.sync()
+        elif isinstance(event, FileModifiedEvent):
+            logger.info(f'update file {event.src_path} in index')
+            self.files_index.add(Path(event.src_path), force=True)
+            self.files_index.sync()
+        elif isinstance(event, FileMovedEvent):
+            logger.info(f'move file from {event.src_path} to {event.dest_path} in index')
+            self.files_index.add(Path(event.dest_path), force=True)
+            self.files_index.delete(Path(event.src_path))
+            self.files_index.sync()
 
 
 def main(watched_dir: str, debug: bool = False) -> int:
