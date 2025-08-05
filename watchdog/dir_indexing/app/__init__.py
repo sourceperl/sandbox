@@ -18,11 +18,11 @@ from .files_index import FilesIndex
 logger = logging.getLogger(__name__)
 
 
-def main(watched_dir: str, debug: bool = False) -> int:
+def main(watched_dir: str, index_name: str = 'index.sha256', skip_patterns: list[str] = [], debug: bool = False) -> int:
     # change this to the path you want to watch
     watched_path = Path(watched_dir)
     # name of the output file
-    index_file_path = watched_path / Path('index.sha256')
+    index_file_path = watched_path / Path(index_name)
 
     # logging setup
     level = logging.DEBUG if debug else logging.INFO
@@ -36,7 +36,7 @@ def main(watched_dir: str, debug: bool = False) -> int:
         return 1
 
     # generation of the index file at startup
-    files_index = FilesIndex(watched_path, index_file_path, skip_patterns=['*.txt'])
+    files_index = FilesIndex(watched_path, index_file_path, skip_patterns=skip_patterns)
     files_index.index_all()
 
     # set up the event handler
