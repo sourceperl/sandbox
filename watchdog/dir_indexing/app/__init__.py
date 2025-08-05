@@ -9,123 +9,13 @@ file integrity, tracking changes, or creating a simple manifest of a directory's
 import logging
 import time
 from pathlib import Path
-from typing import Optional
 
-from watchdog.events import (
-    FileCreatedEvent,
-    FileDeletedEvent,
-    FileModifiedEvent,
-    FileMovedEvent,
-    FileSystemEvent,
-    FileSystemEventHandler,
-)
 from watchdog.observers import Observer
 
-from .sha256 import calculate_sha256
+from .event_handler import EventHandler
+from .files_index import FilesIndex
 
 logger = logging.getLogger(__name__)
-
-
-class FilesIndex:
-    def __init__(self, watched_path: Path, index_path: Path) -> None:
-        # args
-        self.watched_path = watched_path
-        self.index_path = index_path
-        # internal sha256 cache
-        self._files_sha256_d = {}
-
-    def _get_index_name(self, file_path: Path) -> str:
-        return str(file_path.relative_to(self.watched_path))
-
-    def add(self, file_path: Path, force: bool = False):
-        # allow only file
-        if not file_path.is_file():
-            return
-        # skip file which are not in the watched directory
-        if not file_path.is_relative_to(self.watched_path):
-            return
-        # exclude index file to prevent infinite loop
-        if file_path.samefile(self.index_path):
-            return
-        # already indexed ?
-        index_name = self._get_index_name(file_path)
-        if force or index_name not in self._files_sha256_d:
-            # file_path to relative_path ("watched_dir_path/filename" -> "filename")
-            checksum = calculate_sha256(file_path)
-            if not checksum:
-                return
-            logger.debug(f'compute sha256 for {file_path} ({checksum[:10]})')
-            self._files_sha256_d[index_name] = checksum
-            return
-
-    def delete(self, file_path: Path):
-        try:
-            del self._files_sha256_d[self._get_index_name(file_path)]
-        except KeyError:
-            pass
-
-    def init(self):
-        """ Walks on watched directory, calculates SHA256 for all files and writes them to the index file. """
-        # clean before populate cache
-        self._files_sha256_d.clear()
-        # add all files in the watched directory
-        for file in self.watched_path.rglob('*'):
-            self.add(file)
-        # create or update index file
-        self.sync()
-
-    def sync(self):
-        """ Transfer internal sha256 cache to a sorted index file. """
-        try:
-            with open(self.watched_path / self.index_path, 'w') as f:
-                for file, sha256 in sorted(self._files_sha256_d.items()):
-                    f.write(f'{sha256} {file}\n')
-            logger.debug(f'index file "{self.index_path}" has been regenerated.')
-        except Exception as e:
-            logger.error(f'error writing to output file: {e}')
-
-
-class EventHandler(FileSystemEventHandler):
-    """
-    Event handler that triggers the index generation function on changes.
-    """
-
-    def __init__(self, dir_path: Path, index_path: Path, files_index: FilesIndex):
-        super().__init__()
-        # args
-        self.dir_path = dir_path
-        self.index_path = index_path
-        self.files_index = files_index
-
-    def on_any_event(self, event: FileSystemEvent):
-        # skip events for directories
-        if event.is_directory:
-            return
-        # skip events for the index file itself
-        event_src_path = Path(event.src_path)
-        if event_src_path.exists():
-            if event_src_path.samefile(self.index_path):
-                return
-        # log unignored event message
-        logger.debug(f'receive event {event}')
-        # trigger index generation on any change
-        if isinstance(event, FileCreatedEvent):
-            logger.info(f'add file {event.src_path} to index')
-            self.files_index.add(Path(event.src_path))
-            self.files_index.sync()
-        elif isinstance(event, FileDeletedEvent):
-            logger.info(f'remove file {event.src_path} from index')
-            self.files_index.delete(Path(event.src_path))
-            self.files_index.sync()
-        elif isinstance(event, FileModifiedEvent):
-            logger.info(f'update file {event.src_path} in index')
-            self.files_index.add(Path(event.src_path), force=True)
-            self.files_index.sync()
-        elif isinstance(event, FileMovedEvent):
-            logger.info(f'move file from {event.src_path} to {event.dest_path} in index')
-            self.files_index.add(Path(event.dest_path), force=True)
-            self.files_index.delete(Path(event.src_path))
-            self.files_index.sync()
 
 
 def main(watched_dir: str, debug: bool = False) -> int:
@@ -136,7 +26,7 @@ def main(watched_dir: str, debug: bool = False) -> int:
 
     # logging setup
     level = logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(format='%(asctime)s - %(module)-12s - %(levelname)-8s - %(message)s', level=level)
+    logging.basicConfig(format='%(asctime)s - %(module)-16s - %(levelname)-8s - %(message)s', level=level)
     logging.getLogger('watchdog').setLevel(logging.WARNING)
     logger.info(f'app started (monitor directory "{watched_path}")')
 
@@ -146,11 +36,13 @@ def main(watched_dir: str, debug: bool = False) -> int:
         return 1
 
     # generation of the index file at startup
-    files_index = FilesIndex(watched_path, index_file_path)
-    files_index.init()
+    files_index = FilesIndex(watched_path, index_file_path, skip_patterns=['*.txt'])
+    files_index.index_all()
 
-    # set up the observer
+    # set up the event handler
     event_handler = EventHandler(watched_path, index_file_path, files_index)
+
+    # set up the observer (ignore sub-directories)
     observer = Observer()
     observer.schedule(event_handler=event_handler, path=watched_path, recursive=False)
     observer.start()
