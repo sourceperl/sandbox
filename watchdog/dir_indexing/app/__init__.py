@@ -35,11 +35,8 @@ def main(watched_dir: str, index_name: str = 'index.sha256', skip_patterns: list
         logger.error(f'error: directory "{watched_path}" not found.')
         return 1
 
-    # generation of the index file at startup
+    # initial setup
     files_index = FilesIndex(watched_path, index_file_path, skip_patterns=skip_patterns)
-    files_index.index_all()
-
-    # set up the event handler
     event_handler = EventHandler(watched_path, index_file_path, files_index)
 
     # set up the observer (ignore sub-directories)
@@ -48,9 +45,15 @@ def main(watched_dir: str, index_name: str = 'index.sha256', skip_patterns: list
     observer.start()
 
     try:
+        # generation of the index file at startup
+        files_index.index_all()
+        # main loop
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
+        pass
+    finally:
         observer.stop()
-    observer.join()
-    return 0
+        observer.join()
+        logger.info('app stopped')
+        return 0

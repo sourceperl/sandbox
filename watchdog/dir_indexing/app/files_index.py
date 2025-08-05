@@ -180,6 +180,6 @@ class FilesIndex:
             with open(self.watched_path / self.index_path, 'w') as f:
                 for file, sha256 in sorted(self._files_sha256_d.items()):
                     f.write(f'{sha256} {file}\n')
-            logger.debug(f'index file "{self.index_path.name}" has been regenerated.')
+            logger.info(f'index file "{self.index_path.name}" has been regenerated.')
         except Exception as e:
             logger.error(f'error writing to output file: {e}')
