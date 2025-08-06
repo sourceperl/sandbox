@@ -15,7 +15,8 @@ class FilesIndex:
     can be synchronized to a physical file in watched directory.
     """
 
-    def __init__(self, watched_path: Path, index_path: Path, skip_patterns: list[str] = []) -> None:
+    def __init__(self, watched_path: Path, index_path: Path,
+                 allow_patterns: list[str] = [], skip_patterns: list[str] = []) -> None:
         """
         Initializes the FilesIndex with the watched directory and index file path.
 
@@ -28,6 +29,7 @@ class FilesIndex:
         # args
         self.watched_path = watched_path
         self.index_path = index_path
+        self.allow_patterns = allow_patterns
         self.skip_patterns = skip_patterns
         # internal sha256 cache
         self._files_sha256_d = {}
@@ -44,11 +46,30 @@ class FilesIndex:
         """
         return str(file_path.relative_to(self.watched_path))
 
+    def _is_allowed(self, file_path: Path) -> bool:
+        """Checks if a file path is allowed based on defined allow patterns."""
+        if self.allow_patterns:
+            for pattern in self.allow_patterns:
+                if file_path.match(pattern):
+                    return True
+            return False
+        return True
+
     def _is_skipped(self, file_path: Path) -> bool:
+        """Checks if a file path should be skipped based on defined skip patterns."""
         for pattern in self.skip_patterns:
             if file_path.match(pattern):
                 return True
         return False
+    
+    def _is_indexable(self, file_path: Path) -> bool:
+        if not self._is_allowed(file_path):
+            logger.info(f'indexing skipped for "{file_path.name}": don\'t matches allow patterns')
+            return False
+        if self._is_skipped(file_path):
+            logger.info(f'indexing skipped for "{file_path.name}": matches skip patterns')
+            return False
+        return True
 
     def add(self, file_path: Path, force: bool = False) -> bool:
         """
@@ -78,8 +99,7 @@ class FilesIndex:
         if file_path.exists() and self.index_path.exists() and file_path.samefile(self.index_path):
             return False
         # skip file if any skip pattern match
-        if self._is_skipped(file_path):
-            logger.debug(f'skip file "{file_path.name}"')
+        if not self._is_indexable(file_path):
             return False
         # already in index ?
         index_name = self._get_index_name(file_path)
@@ -133,8 +153,7 @@ class FilesIndex:
         src_index_name = self._get_index_name(src_file_path)
         dest_index_name = self._get_index_name(dest_file_path)
         # destination file match the skip patterns ?
-        if self._is_skipped(dest_file_path):
-            logger.debug(f'skip file "{dest_file_path.name}"')
+        if not self._is_indexable(dest_file_path):
             # delete source file from in-memory cache, lose destination file ignored
             try:
                 self._files_sha256_d.pop(src_index_name)
@@ -180,6 +199,6 @@ class FilesIndex:
             with open(self.watched_path / self.index_path, 'w') as f:
                 for file, sha256 in sorted(self._files_sha256_d.items()):
                     f.write(f'{sha256} {file}\n')
-            logger.info(f'index file "{self.index_path.name}" has been regenerated.')
+            logger.info(f'index file "{self.index_path.name}" has been regenerated')
         except Exception as e:
             logger.error(f'error writing to output file: {e}')

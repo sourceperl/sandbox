@@ -9,5 +9,5 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-d', '--debug', action='store_true', help='set debug mode')
 args = parser.parse_args()
 
-# main (don't index files like "_skip_file.txt")
-sys.exit(main(watched_dir=WATCHED_DIR, skip_patterns=['_*'], debug=args.debug))
+# main (index files as "file.txt" but not as "_file.txt")
+sys.exit(main(watched_dir=WATCHED_DIR, allow_patterns=['*.txt'], skip_patterns=['_*'], debug=args.debug))

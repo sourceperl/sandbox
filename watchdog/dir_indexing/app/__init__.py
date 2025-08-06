@@ -18,7 +18,9 @@ from .files_index import FilesIndex
 logger = logging.getLogger(__name__)
 
 
-def main(watched_dir: str, index_name: str = 'index.sha256', skip_patterns: list[str] = [], debug: bool = False) -> int:
+def main(watched_dir: str, index_name: str = 'index.sha256',
+         skip_patterns: list[str] = [], allow_patterns: list[str] = [],
+         debug: bool = False) -> int:
     # change this to the path you want to watch
     watched_path = Path(watched_dir)
     # name of the output file
@@ -36,7 +38,7 @@ def main(watched_dir: str, index_name: str = 'index.sha256', skip_patterns: list
         return 1
 
     # initial setup
-    files_index = FilesIndex(watched_path, index_file_path, skip_patterns=skip_patterns)
+    files_index = FilesIndex(watched_path, index_file_path, allow_patterns=allow_patterns, skip_patterns=skip_patterns)
     event_handler = EventHandler(watched_path, index_file_path, files_index)
 
     # set up the observer (ignore sub-directories)

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from watchdog.events import (
     FileCreatedEvent,
+    FileClosedEvent,
     FileDeletedEvent,
     FileModifiedEvent,
     FileMovedEvent,
@@ -59,30 +60,39 @@ class EventHandler(FileSystemEventHandler):
         # skip events for directories
         if event.is_directory:
             return
+        # skip FileModifiedEvent (too verbose for large downloaded file)
+        if isinstance(event, FileModifiedEvent):
+            return
         # src_path as Path
         event_src_path = Path(event.src_path)
         # log unignored event message
         logger.debug(f'receive {event}')
-        # trigger index generation on any change
-        if isinstance(event, FileCreatedEvent):
-            if self.files_index.add(event_src_path):
-                logger.info(f'add file "{event_src_path.name}" to index')
-                self.files_index.sync()
-        elif isinstance(event, FileDeletedEvent):
+        # event for index file ?
+        if event_src_path.resolve() == self.index_path.resolve():
             # deletion of the index file -> regenerate it
-            if event_src_path.resolve() == self.index_path.resolve():
+            if isinstance(event, FileDeletedEvent):
                 logger.info(f'index file "{self.index_path.name}" removed: rebuild it from in-memory cache')
                 self.files_index.sync()
-            # other files process
-            elif self.files_index.delete(event_src_path):
-                logger.info(f'remove file "{event_src_path.name}" from index')
+            return
+        # trigger index generation on any change
+        if isinstance(event, FileCreatedEvent):
+            logger.info(f'file created "{event_src_path.name}"')
+            if self.files_index.add(event_src_path):
                 self.files_index.sync()
-        elif isinstance(event, FileModifiedEvent):
+            return
+        if isinstance(event, FileDeletedEvent):
+            logger.info(f'file deleted "{event_src_path.name}"')
+            if self.files_index.delete(event_src_path):
+                self.files_index.sync()
+            return
+        if isinstance(event, FileClosedEvent):
+            logger.info(f'file closed (probably updated) "{event_src_path.name}"')
             if self.files_index.add(event_src_path, force=True):
-                logger.info(f'update file "{event_src_path.name}" in index')
                 self.files_index.sync()
-        elif isinstance(event, FileMovedEvent):
+            return
+        if isinstance(event, FileMovedEvent):
             event_dest_path = Path(event.dest_path)
+            logger.info(f'file moved from "{event_src_path.name}" to "{event_dest_path.name}"')
             if self.files_index.move(event_src_path, event_dest_path):
-                logger.info(f'move file from "{event_src_path.name}" to "{event_dest_path.name}" in index')
                 self.files_index.sync()
+            return
