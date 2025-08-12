@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, Union
 
 from paramiko import RejectPolicy, SSHClient
-from private_data_index import HOSTNAME, PORT, USER
+from private_data_2 import HOSTNAME, PORT, USER
 
 
 class MySFTP:
