@@ -1,10 +1,16 @@
+"""
+An example of "Bézier Curve".
+
+https://www.geogebra.org/m/pp7t6gsp
+"""
+
 from math import comb
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 # some const
-CTRL_POINTS = np.array([(1, 1), (3, 3), (5, 0), (7,3)])
+CTRL_POINTS = np.array([(1, 1), (3, 3), (5, 0), (7, 3)])
 
 
 # some functions
