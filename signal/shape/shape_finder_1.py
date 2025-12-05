@@ -23,15 +23,15 @@ class ShapeFinderAnim:
         # good model define
         mod_start_index = 17
         # max part
-        self.mod_max = .5
-        self.mod_max += sigmoid(self.x, -4.5, -1.1, mod_start_index + 4)
-        self.mod_max += sigmoid(self.x, 2.0, -0.9, mod_start_index + 19)
-        self.mod_max += sigmoid(self.x, -1.5, -0.9, mod_start_index + 50)
+        self.norm_sig_up = .5
+        self.norm_sig_up += sigmoid(self.x, -4.5, -1.1, mod_start_index + 4)
+        self.norm_sig_up += sigmoid(self.x, 2.0, -0.9, mod_start_index + 19)
+        self.norm_sig_up += sigmoid(self.x, -1.5, -0.9, mod_start_index + 50)
         # min part
-        self.mod_min = -.5
-        self.mod_min += sigmoid(self.x, -4.5, -1.1, mod_start_index)
-        self.mod_min += sigmoid(self.x, 2.0, -0.9, mod_start_index + 21)
-        self.mod_min += sigmoid(self.x, -1.5, -0.9, mod_start_index + 48)
+        self.norm_sig_down = -.5
+        self.norm_sig_down += sigmoid(self.x, -4.5, -1.1, mod_start_index)
+        self.norm_sig_down += sigmoid(self.x, 2.0, -0.9, mod_start_index + 21)
+        self.norm_sig_down += sigmoid(self.x, -1.5, -0.9, mod_start_index + 48)
         # init subplots
         self.fig, (self.ax1, self.ax2) = plt.subplots(nrows=2, ncols=1)
         self.fig.suptitle('Signal shape finder')
@@ -43,17 +43,17 @@ class ShapeFinderAnim:
         sig = self.full_raw_sig[sig_begin_at:sig_begin_at + self.frame_count]
 
         # normalize signal from first value to %
-        origin = sig[0] if sig[0] > 10.0 else 10
-        n_sig = 100 * sig / origin - 100
+        origin = max(sig[0], 10)
+        norm_sig = (sig / origin) * 100
+        norm_sig -= 100
 
         # check current limit and signal status
-        n_sig_up = n_sig - self.mod_max
-        n_sig_up[n_sig_up < 0] = 0.0
-        n_sig_down = self.mod_min - n_sig
-        n_sig_down[n_sig_down < 0] = 0.0
-        n_sig_over = n_sig_up + n_sig_down
-        sig_dev = n_sig_over.mean()
-        sig_match = sig_dev < .2
+        up_overshoot = norm_sig - self.norm_sig_up
+        up_overshoot[up_overshoot < 0] = 0.0
+        down_overshoot = self.norm_sig_down - norm_sig
+        down_overshoot[down_overshoot < 0] = 0.0
+        mean_overshoot = (up_overshoot + down_overshoot).mean()
+        sig_match = mean_overshoot < .2
 
         # ax1 build
         self.ax1.clear()
@@ -63,14 +63,14 @@ class ShapeFinderAnim:
 
         # ax2 build
         ax2_color = 'green' if sig_match else 'red'
-        ax2_label = f'mean deviation={sig_dev:.2f} % (frame {idx_frame+1}/{self.frame_count})'
+        ax2_label = f'mean overshoot={mean_overshoot:.2f} % (frame {idx_frame+1}/{self.frame_count})'
         self.ax2.clear()
-        self.ax2.plot(n_sig, label='signal in %')
-        self.ax2.plot(self.mod_max, 'r--', label='max')
-        self.ax2.plot(self.mod_min, 'b--', label='min')
-        self.ax2.fill_between(self.x, self.mod_max, self.mod_min, color=ax2_color, alpha=0.3)
+        self.ax2.plot(norm_sig, label='signal in %')
+        self.ax2.plot(self.norm_sig_up, 'r--', label='max')
+        self.ax2.plot(self.norm_sig_down, 'b--', label='min')
+        self.ax2.fill_between(self.x, self.norm_sig_up, self.norm_sig_down, color=ax2_color, alpha=0.3)
         self.ax2.set_xlabel(ax2_label, fontdict={'color': ax2_color})
-        self.ax2.set_ylabel('signal deviation (in %)')
+        self.ax2.set_ylabel('signal (in %)')
         self.ax2.legend()
         self.ax2.grid()
 
