@@ -163,13 +163,9 @@ if __name__ == '__main__':
     raw_sig += np.random.normal(loc=0.0, scale=0.2, size=raw_sig.shape)
 
     # target pattern
-    target_pat = np.zeros(50)
-    target_pat[10:15] = -100
-    target_pat[15:20] = -50
-    target_pat[20:30] = -20
-    target_pat[30:40] = -10
+    target_pat = - 100 * sig_exp_pulse(pulse_len=20, prefix_len=10, suffix_len=10)
 
     # detection threshold
-    threshold = 60.0
+    threshold = 30.0
 
     ShapeFinderAnim(raw_sig, target_pat, threshold)()
