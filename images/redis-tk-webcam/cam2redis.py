@@ -17,7 +17,7 @@ import redis
 REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
 REDIS_KEY = 'webcam_img'
-IMG_URL = 'https://www.infoclimat.fr/cartes/getProxyWebcam.php?idw=471&c=30&t=jpg&26318'
+IMG_URL = 'https://www.infoclimat.fr/cartes/getProxyWebcam.php?idw=665&c=30&t=jpg'
 
 
 # some function

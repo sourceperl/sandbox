@@ -2,13 +2,16 @@
 
 """Decode position of a gauge needle."""
 
+from pathlib import Path
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 
 # load image
-pil_origin_img = Image.open('img/gauge.jpg')
+current_dir = Path(__file__).resolve().parent
+pil_origin_img = Image.open(current_dir / 'img/gauge.jpg')
 origin_img = np.array(pil_origin_img)
 
 # step 1: perspective change
@@ -43,7 +46,7 @@ if lines_l is not None:
                 line_ang = 90 + np.degrees(np.arcsin((y_center - y_end) / line_len))
             else:
                 line_ang = 180 + 90 - np.degrees(np.arcsin((y_center - y_end) / line_len))
-            pressure = 2500 * (line_ang - 38) / (312 - 38)
+            pressure = ((line_ang - 42) / 276) * 2500
             # print current line stats
             print(f'find a line from {(x1, y1)} to {(x2, y2)}')
             print(f' - end is at {(x_end, y_end)}')
@@ -57,13 +60,13 @@ if lines_l is not None:
 
 # show images
 fig = plt.figure()
-fig.add_subplot('131')
+fig.add_subplot(131)
 plt.title('original picture')
 plt.imshow(origin_img)
-fig.add_subplot('132')
+fig.add_subplot(132)
 plt.title('flatted image masked')
 plt.imshow(flat_img_mask)
-fig.add_subplot('133')
+fig.add_subplot(133)
 plt.title('needle position')
 plt.imshow(flat_img)
 plt.show()
