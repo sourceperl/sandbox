@@ -9,8 +9,6 @@ or
     $ pip install sqlalchemy
 """
 
-import os
-
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -28,12 +26,8 @@ class User(Base):
         return f"<User(id={self.id}, name='{self.name}')>"
 
 
-# db in same directory as current script
-script_dir = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(script_dir, 'mydatabase.db')
-
-# init engine (turn on echo for debug on need)
-engine = create_engine(f'sqlite:///{db_path}', echo=False)
+# init an engine for an in-memory db (turn on echo for debug on need)
+engine = create_engine(f'sqlite:///:memory:', echo=False)
 
 # create all tables in the database (if they don't exist)
 Base.metadata.create_all(engine)
