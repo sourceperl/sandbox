@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+
+import argparse
+import sys
+from datetime import datetime, timedelta
+
+
+def get_hid(dt: datetime) -> int:
+    """
+    Calculates the total number of hours elapsed since January 1st, 1976 at 00:00.
+
+    The target datetime is normalized by setting minutes, seconds, and microseconds 
+    to zero before computing the difference to ensure a whole number of hours.
+
+    Args:
+        dt (datetime): The date and time to be converted into an hour ID.
+
+    Returns:
+        int: The unique hour index (HID) starting from the 1976 reference.
+    """
+    # keep only year/month/day hour for compute (eval other items as 0)
+    dt = dt.replace(minute=0, second=0, microsecond=0)
+    origin_dt = datetime(year=1976, month=1, day=1, hour=0, minute=0)
+    diff = dt - origin_dt
+    return round(diff.total_seconds() / 3600)
+
+
+def get_dt_from_hid(hid: int) -> datetime:
+    """
+    Reverts a unique hour index (HID) back into a datetime object.
+
+    The calculation is based on the number of hours elapsed since 
+    January 1st, 1976 at 00:00.
+
+    Args:
+        hid (int): The unique hour index to be converted.
+
+    Returns:
+        datetime: The corresponding date and time at the start of that hour.
+    """
+    origin_dt = datetime(year=1976, month=1, day=1, hour=0, minute=0)
+    return origin_dt + timedelta(hours=hid)
+
+
+def get_did(dt: datetime) -> int:
+    """
+    Calculates the total number of days elapsed since January 1st, 1976.
+
+    The target datetime is normalized by setting hours, minutes, seconds, 
+    and microseconds to zero before computing the difference.
+
+    Args:
+        dt (datetime): The date and time to be converted into a day ID.
+
+    Returns:
+        int: The unique day index (DID) starting from the 1976 reference.
+    """
+    # Keep only year/month/day for compute (set all time components to 0)
+    dt = dt.replace(hour=0, minute=0, second=0, microsecond=0)
+    origin_dt = datetime(year=1976, month=1, day=1)
+
+    diff = dt - origin_dt
+
+    # .days returns the integer number of days directly
+    return diff.days
+
+
+def get_dt_from_did(did: int) -> datetime:
+    """
+    Reverts a unique day index (DID) back into a datetime object.
+
+    The calculation is based on the number of days elapsed since 
+    January 1st, 1976.
+
+    Args:
+        did (int): The unique day index to be converted.
+
+    Returns:
+        datetime: The corresponding date at 00:00:00.
+    """
+    origin_dt = datetime(year=1976, month=1, day=1)
+
+    # Add the days to the origin
+    return origin_dt + timedelta(days=did)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Convert between datetime and HID/DID (since origin: 1976-01-01).")
+
+    # Mutually exclusive group: either we are working with HID or DID
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--hid', action='store_true', help="Operate on Hour ID")
+    group.add_argument('--did', action='store_true', help="Operate on Day ID")
+
+    # The value to convert
+    parser.add_argument('value', help="The value to convert. Can be an integer (ID) or an ISO datetime string.")
+
+    args = parser.parse_args()
+
+    try:
+        # Check if value is an integer (ID -> Date)
+        if args.value.isdigit():
+            val = int(args.value)
+            if args.hid:
+                result = get_dt_from_hid(val)
+                print(f"HID {val:_} -> {result}")
+            else:
+                result = get_dt_from_did(val)
+                print(f"DID {val:_} -> {result.date()}")
+
+        # Otherwise, assume it's a date string (Date -> ID)
+        else:
+            dt = datetime.fromisoformat(args.value)
+            if args.hid:
+                res = get_hid(dt)
+                print(f"Date {args.value} -> HID: {res:_} (0x{res:X})")
+            else:
+                res = get_did(dt)
+                print(f"Date {args.value} -> DID: {res:_} (0x{res:X})")
+
+        return 0
+
+    except ValueError as e:
+        print(f"Error: Invalid input format. Use an integer ID or ISO date (YYYY-MM-DDTHH). Detail: {e}")
+        return 1
+
+
+if __name__ == '__main__':
+    sys.exit(main())
