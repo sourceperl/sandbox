@@ -42,6 +42,19 @@ class TaskInfo:
     last_evt_dt: Optional[datetime] = None
 
 
+def parse_timestamp(ts: Optional[int]) -> Optional[datetime]:
+    """
+    Convert a Unix UTC timestamp integer to a naive datetime localized to Europe/Paris.
+
+    :param ts: Unix timestamp in seconds (or None/0).
+    :return: A naive datetime object in Paris local time, or None if the input is empty.
+    """
+    if not ts:
+        return None
+    dt_utc = datetime.fromtimestamp(ts, tz=timezone.utc)
+    return dt_utc.astimezone(ZoneInfo("Europe/Paris")).replace(tzinfo=None)
+
+
 # Core function refactored with SQLAlchemy
 def main(pub_path: Path):
     # init list of TaskInfo
@@ -96,7 +109,7 @@ def main(pub_path: Path):
                     FlysprayComment,
                     FlysprayTask.task_id == FlysprayComment.task_id,
                 )
-                #.where(FlysprayTask.is_closed == 0)
+                # .where(FlysprayTask.is_closed == 0)
                 .group_by(FlysprayTask.task_id)
                 .order_by(FlysprayTask.task_id.desc())
                 .limit(100_000)
@@ -114,25 +127,9 @@ def main(pub_path: Path):
                     status=row.status_name,
                     expl_team=row.category_name,
                     evt_nb=row.comments_nb,
+                    open_dt=parse_timestamp(row.date_opened),
+                    last_evt_dt=parse_timestamp(row.last_edited_time),
                 )
-
-                # Localized datetimes
-                if row.date_opened:
-                    as_utc_dt = datetime.fromtimestamp(
-                        row.date_opened, tz=timezone.utc
-                    )
-                    task_info.open_dt = as_utc_dt.astimezone(
-                        ZoneInfo("Europe/Paris")
-                    ).replace(tzinfo=None)
-
-                if row.last_edited_time:
-                    as_utc_dt = datetime.fromtimestamp(
-                        row.last_edited_time, tz=timezone.utc
-                    )
-                    task_info.last_evt_dt = as_utc_dt.astimezone(
-                        ZoneInfo("Europe/Paris")
-                    ).replace(tzinfo=None)
-
                 open_task_l.append(task_info)
 
         # Sort tasks by last event dt descending
