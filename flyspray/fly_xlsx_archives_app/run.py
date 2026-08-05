@@ -16,8 +16,5 @@ pub_path = base_dir / 'outputs'
 logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
 
 logging.info("start of export task")
-try:
-    main(pub_path=pub_path)
-except Exception as e:
-    logging.error(f"error occurred during dashboard build: {e}")
+main(pub_path=pub_path)
 logging.info("task done")

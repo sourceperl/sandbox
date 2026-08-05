@@ -2,7 +2,7 @@
 Export data from flyspray to xlsx dashboards using SQLAlchemy ORM.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from os.path import join
 from pathlib import Path
@@ -25,7 +25,7 @@ from openpyxl.styles import Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from sqlalchemy import create_engine, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 
 # some dataclass
@@ -35,14 +35,16 @@ class TaskInfo:
     task_id: int
     project: str
     summary: str
+    desc: str
     status: str
     expl_team: str
     evt_nb: int
     open_dt: Optional[datetime] = None
     last_evt_dt: Optional[datetime] = None
+    comments: List[FlysprayComment] = field(default_factory=list)
 
 
-def parse_timestamp(ts: Optional[int]) -> Optional[datetime]:
+def parse_fly_timestamp(ts: Optional[int]) -> Optional[datetime]:
     """
     Convert a Unix UTC timestamp integer to a naive datetime localized to Europe/Paris.
 
@@ -59,29 +61,24 @@ def parse_timestamp(ts: Optional[int]) -> Optional[datetime]:
 def main(pub_path: Path):
     # init list of TaskInfo
     open_task_l: List[TaskInfo] = []
+    databases = [("flyspray-tne", "tne")]
 
-    for db_name, fly_id in [("flyspray-tne", "tne")]:
+    for db_name, fly_id in databases:
         # Create MySQL Engine (using pymysql driver under the hood)
         url = f"mysql+pymysql://{DB_USER}:{DB_PWD}@{DB_HOST}/{db_name}?charset=utf8mb4"
         engine = create_engine(url)
 
         with Session(engine) as session:
-            # Construct SQLAlchemy 2.0 statement
+            # Query tasks and eager-load comments relationship via selectinload
             stmt = (
                 select(
-                    FlysprayTask.task_id,
+                    FlysprayTask,
                     FlysprayProject.project_title,
                     FlysprayListCategory.category_name,
                     FlysprayListStatus.status_name,
-                    FlysprayListTaskType.tasktype_name,
-                    FlysprayTask.item_summary,
-                    FlysprayTask.detailed_desc,
-                    FlysprayTask.date_opened,
-                    FlysprayTask.date_closed,
-                    FlysprayTask.last_edited_time,
-                    FlysprayUser.user_name.label("opened_by_user"),
                     func.count(FlysprayComment.comment_id).label("comments_nb"),
                 )
+                .options(selectinload(FlysprayTask.comments))
                 .outerjoin(
                     FlysprayProject,
                     FlysprayTask.project_id == FlysprayProject.project_id,
@@ -95,21 +92,9 @@ def main(pub_path: Path):
                     FlysprayTask.item_status == FlysprayListStatus.status_id,
                 )
                 .outerjoin(
-                    FlysprayListTaskType,
-                    FlysprayTask.task_type == FlysprayListTaskType.tasktype_id,
-                )
-                .outerjoin(
-                    FlysprayUser, FlysprayTask.opened_by == FlysprayUser.user_id
-                )
-                .outerjoin(
-                    FlysprayAssigned,
-                    FlysprayTask.task_id == FlysprayAssigned.task_id,
-                )
-                .outerjoin(
                     FlysprayComment,
                     FlysprayTask.task_id == FlysprayComment.task_id,
                 )
-                # .where(FlysprayTask.is_closed == 0)
                 .group_by(FlysprayTask.task_id)
                 .order_by(FlysprayTask.task_id.desc())
                 .limit(100_000)
@@ -118,21 +103,24 @@ def main(pub_path: Path):
             results = session.execute(stmt).all()
 
             for row in results:
-                # Map row fields to TaskInfo struct
+                task: FlysprayTask = row.FlysprayTask
+
                 task_info = TaskInfo(
                     fly_id=fly_id,
-                    task_id=row.task_id,
-                    project=row.project_title,
-                    summary=row.item_summary,
-                    status=row.status_name,
-                    expl_team=row.category_name,
+                    task_id=task.task_id,
+                    project=row.project_title or "",
+                    summary=task.item_summary or "",
+                    desc=task.detailed_desc or "",
+                    status=row.status_name or "",
+                    expl_team=row.category_name or "",
                     evt_nb=row.comments_nb,
-                    open_dt=parse_timestamp(row.date_opened),
-                    last_evt_dt=parse_timestamp(row.last_edited_time),
+                    open_dt=parse_fly_timestamp(task.date_opened),
+                    last_evt_dt=parse_fly_timestamp(task.last_edited_time),
+                    comments=task.comments,
                 )
                 open_task_l.append(task_info)
 
-        # Sort tasks by last event dt descending
+        # Sort all aggregated tasks by last event date descending
         open_task_l = sorted(open_task_l, key=lambda x: x.last_evt_dt or datetime.min, reverse=True)
 
     # Build XLSX workbook
@@ -147,15 +135,15 @@ def main(pub_path: Path):
 
         # Dimensions & Headings
         headers_and_widths = [
-            ("Instance", 15.0),
-            ("Task ID", 15.0),
+            ("Ticket", 10.0),
             ("Equipe DTS", 20.0),
+            ("Exploitant", 30.0),
             ("Date et heure d'ouverture", 30.0),
             ("Date et heure dernier événement", 30.0),
             ("Résumé", 75.0),
-            ("Etat du ticket", 25.0),
-            ("Equipe d'exploitation", 30.0),
-            ("Nb événement", 15.0),
+            ("Description", 75.0),
+            ("Nb commentaires", 15.0),
+            ("Commentaires", 80.0),
         ]
 
         for col_idx, (header, width) in enumerate(headers_and_widths, start=1):
@@ -164,32 +152,49 @@ def main(pub_path: Path):
 
         # Append rows
         for row_idx, task_info in enumerate(open_task_l, start=2):
-            # column "Instance"
-            sheet.cell(row=row_idx, column=1, value=task_info.fly_id.upper())
+            # init column index
+            col_idx = 0
             # column "Task ID"
-            sheet.cell(row=row_idx, column=2, value=task_info.task_id)
+            col_idx += 1
+            sheet.cell(row=row_idx, column=col_idx, value=task_info.task_id)
             # column "Equipe DTS"
-            sheet.cell(row=row_idx, column=3, value=task_info.project)
+            col_idx += 1
+            sheet.cell(row=row_idx, column=col_idx, value=task_info.project)
+            # column "Exploitant"
+            col_idx += 1
+            sheet.cell(row=row_idx, column=col_idx, value=task_info.expl_team)
             # column "Date et Heure d'ouverture"
+            col_idx += 1
             if task_info.open_dt:
-                cell_open = sheet.cell(row=row_idx, column=4, value=task_info.open_dt)
+                cell_open = sheet.cell(row=row_idx, column=col_idx, value=task_info.open_dt)
                 cell_open.number_format = "dd/mm/yyyy hh:mm"
             # column "Date et Heure dernier événement"
+            col_idx += 1
             if task_info.last_evt_dt:
-                cell_evt = sheet.cell(row=row_idx, column=5, value=task_info.last_evt_dt)
+                cell_evt = sheet.cell(row=row_idx, column=col_idx, value=task_info.last_evt_dt)
                 cell_evt.number_format = "dd/mm/yyyy hh:mm"
             # column "Résumé"
-            sheet.cell(row=row_idx, column=6, value=task_info.summary)
-            # column "Etat du ticket"
-            sheet.cell(row=row_idx, column=7, value=task_info.status)
-            # column "Equipe d'exploitation"
-            sheet.cell(row=row_idx, column=8, value=task_info.expl_team)
-            # column "Nb événement"
-            sheet.cell(row=row_idx, column=9, value=str(task_info.evt_nb))
+            col_idx += 1
+            sheet.cell(row=row_idx, column=col_idx, value=task_info.summary)
+            # column "Description"
+            col_idx += 1
+            sheet.cell(row=row_idx, column=col_idx, value=task_info.desc)
+            # column "Nb commentaires"
+            col_idx += 1
+            sheet.cell(row=row_idx, column=col_idx, value=str(task_info.evt_nb))
+            # column "Commentaires"
+            col_idx += 1
+            cell_txt = ""
+            for comment in task_info.comments:
+                if comment.comment_text:
+                    comment_dt = parse_fly_timestamp(comment.last_edited_time)
+                    head_mark = "-" * 20 + f" {comment_dt} " + "-" * 20 
+                    cell_txt += f"{head_mark}\r\n{comment.comment_text.strip()}\r\n"
+            sheet.cell(row=row_idx, column=col_idx, value=cell_txt)
 
         # Format styles
-        for col in sheet.columns:
-            for cell in col:
+        for col_idx in sheet.columns:
+            for cell in col_idx:
                 cell.alignment = Alignment(horizontal="center")
 
         tab = Table(
@@ -201,4 +206,4 @@ def main(pub_path: Path):
         )
         sheet.add_table(tab)
 
-        wb.save(filename=join(pub_path, "fly_all_open_tasks.xlsx"))
+        wb.save(filename=join(pub_path, f"fly_{fly_id}_tasks.xlsx"))
