@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 
-from app.config import DB_HOST, DB_PWD, DB_USER
+from app.config import DATABASES, DB_HOST, DB_PWD, DB_USER
 from app.models import (
+    FlysprayAttachment,
     FlysprayComment,
     FlysprayListCategory,
     FlysprayListStatus,
@@ -59,7 +60,7 @@ def parse_fly_timestamp(ts: Optional[int]) -> Optional[datetime]:
     return dt_utc.astimezone(ZoneInfo("Europe/Paris")).replace(tzinfo=None)
 
 
-def db_request(database: str) -> List[TaskInfo]:
+def _request_tasks_from_db(database: str) -> List[TaskInfo]:
     """
     query flyspray tasks and associated comments from the specified mysql database using sqlalchemy.
 
@@ -133,7 +134,7 @@ def db_request(database: str) -> List[TaskInfo]:
         engine.dispose()
 
 
-def build_xlsx(file: str, task_l: list):
+def _build_xlsx(file: str, task_l: list):
     """
     generate an excel spreadsheet dashboard from a list of taskinfo items.
 
@@ -231,19 +232,70 @@ def build_xlsx(file: str, task_l: list):
     wb.save(file)
 
 
-def main(pub_path: Path):
+def _rename_db_attachments(database: str, fly_id: str, pub_path: Path):
+    """
+    query attachment records from mysql and copy/rename matching target files
+    from outputs/attachments_[fly_id] to their original names.
+
+    :param database: database name to query.
+    :param fly_id: project/instance identifier prefix (e.g. 'tne').
+    :param pub_path: base directory path containing the attachments target folder.
+    """
+    logger.info(f'processing attachments for DB "{database}" ({fly_id})')
+
+    # directory layout setup: outputs/attachments_[fly_id]
+    target_dir = pub_path / f'attachments_{fly_id}'
+
+    if not target_dir.exists():
+        logger.warning(f'directory standard path "{target_dir}" does not exist, skipping.')
+        return
+
+    # create database engine
+    url = f'mysql+pymysql://{DB_USER}:{DB_PWD}@{DB_HOST}/{database}?charset=utf8mb4'
+    engine = create_engine(url)
+
+    try:
+        with Session(engine) as session:
+            stmt = select(FlysprayAttachment)
+            attachments = session.scalars(stmt).all()
+
+        for att in attachments:
+            source_file = target_dir / att.file_name
+
+            if source_file.is_file():
+                # construct new destination path using original filename
+                destination_file = target_dir / f'{att.task_id}_{att.orig_name}'
+
+                # avoid overwriting if source and dest are identical or dest already renamed
+                if source_file != destination_file:
+                    logger.info(f'renaming file "{att.file_name}" -> "{destination_file.name}"')
+                    # use shutil.move or os.rename to rename in-place
+                    source_file.rename(destination_file)
+            else:
+                logger.debug(f'attachment file "{att.file_name}" not found in "{target_dir}"')
+
+    finally:
+        engine.dispose()
+
+
+def build_excel_reports(pub_path: Path):
     """
     main orchestration function to iterate through target databases, fetch task details, and export excel reports.
 
     :param pub_path: directory path where the generated xlsx files will be saved.
     """
 
-    databases = [("flyspray-tca", "tca"),
-                 ("flyspray-tne", "tne"),
-                 ("flyspray-trm", "trm"),
-                 ("flyspray-tvs", "tvs")]
-
-    for db_name, fly_id in databases:
+    for db_name, fly_id in DATABASES:
         xlsx_file = join(pub_path, f"fly_{fly_id}_tasks.xlsx")
-        task_info_l = db_request(db_name)
-        build_xlsx(xlsx_file, task_info_l)
+        task_info_l = _request_tasks_from_db(db_name)
+        _build_xlsx(xlsx_file, task_info_l)
+
+
+def rename_attachments(pub_path: Path):
+    """
+    main entry point to iterate through configured flyspray databases and rename attachment files.
+
+    :param pub_path: directory path containing attachments_[fly_id] folders.
+    """
+    for db_name, fly_id in DATABASES:
+        _rename_db_attachments(db_name, fly_id, pub_path)
