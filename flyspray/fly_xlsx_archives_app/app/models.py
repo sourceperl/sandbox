@@ -85,21 +85,20 @@ class FlysprayCache(Base):
 
 
 class FlysprayComment(Base):
-    __tablename__ = "flyspray_comments"
+    __tablename__ = 'flyspray_comments'
 
     comment_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    task_id: Mapped[int] = mapped_column(
-        ForeignKey("flyspray_tasks.task_id"), default=0
-    )
+    task_id: Mapped[int] = mapped_column(ForeignKey('flyspray_tasks.task_id'), default=0)
     date_added: Mapped[int] = mapped_column(default=0)
-    user_id: Mapped[int] = mapped_column(default=0)
+    user_id: Mapped[int] = mapped_column(ForeignKey('flyspray_users.user_id'), default=0)
     comment_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     last_edited_time: Mapped[int] = mapped_column(default=0)
 
-    # Relationships
-    task: Mapped["FlysprayTask"] = relationship(back_populates="comments")
+    # relationships
+    task: Mapped['FlysprayTask'] = relationship(back_populates='comments')
+    user: Mapped[Optional['FlysprayUser']] = relationship()
 
-    __table_args__ = (Index("flyspray_task_id_comments", "task_id"),)
+    __table_args__ = (Index('flyspray_task_id_comments', 'task_id'),)
 
 
 class FlysprayDependency(Base):

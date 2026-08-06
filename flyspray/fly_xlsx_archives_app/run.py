@@ -13,7 +13,8 @@ from app import main
 base_dir = Path(__file__).resolve().parent
 pub_path = base_dir / 'outputs'
 
-logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
+# global log conf: sets a default format and level for all loggers in this application
+logging.basicConfig(format='%(asctime)s - %(name)-20s - %(levelname)-8s - %(message)s', level=logging.INFO)
 
 logging.info("start of export task")
 main(pub_path=pub_path)
