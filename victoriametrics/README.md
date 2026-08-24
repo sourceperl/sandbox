@@ -123,8 +123,8 @@ curl -s -X POST -H 'Content-Encoding: gzip' http://127.0.0.1:8428/api/v1/import 
 ### As a CSV
 
 ```bash
-# export a specific metric
-curl -s http://127.0.0.1:8428/api/v1/export/csv -d 'match[]=my_metric' -d 'format=__name__,__value__,__timestamp__:rfc3339' > my_metric.csv
+# export a specific metric (data from the last hour)
+curl -s http://127.0.0.1:8428/api/v1/export/csv -d 'match[]=my_metric' -d 'start=-1h' -d 'end=now' -d 'format=__name__,__value__,__timestamp__:rfc3339' > my_metric.csv
 # export all
 curl -s http://localhost:8428/api/v1/export/csv -d 'match[]={__name__!=""}' -d 'format=__name__,__value__,__timestamp__:rfc3339' > all.csv
 ```
