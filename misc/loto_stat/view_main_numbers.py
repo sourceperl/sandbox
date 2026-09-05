@@ -21,9 +21,10 @@ all_balls = df[ball_cols].melt()['value'].dropna().astype(int).tolist()
 counts = Counter(all_balls)
 
 # ensure all numbers from 1 to 49 are represented
+n_draws = len(df)
 n = len(all_balls)
 x = list(range(1, 50))
-y = [100 * counts[num]/n for num in x]
+y = [100 * counts[i]/n_draws for i in x]
 
 # calculate mean probability
 # theoretical expected value is 100 / 49 (~2.04%)
@@ -45,11 +46,11 @@ plt.axhspan(mean - 2 * std, mean + 2 * std, color='orange', alpha=0.15,
 plt.axhspan(mean - std, mean + std, color='green', alpha=0.20,
             label=f'±1σ ({mean - std:.2f}% à {mean + std:.2f}%)')
 
-plt.title(f'Occurrences per ball number (boules 1 to 5) since november 2019 ({len(df)} draws)')
+plt.title(f'Probability by ball number since november 2019 in {len(df)} draws')
 plt.xlabel('Lotto balls')
 plt.ylabel('Probability (%)')
 plt.xlim(0, 50)
-plt.ylim(1.4, 2.6)
+#plt.ylim(1.4, 2.6)
 
 # set x-axis ticks every 1 unit
 ax = plt.gca()
